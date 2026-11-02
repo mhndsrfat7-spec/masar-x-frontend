@@ -42,6 +42,7 @@
   --color-brand-deep: var(--brand-deep);
   --color-brand-soft: var(--brand-soft);
   --color-brand-mint: var(--brand-mint);
+  --color-brand-emerald: var(--brand-emerald);
   --color-cream: var(--cream);
   --color-cream-deep: var(--cream-deep);
   --color-amber-accent: var(--amber-accent);
@@ -57,121 +58,126 @@
 :root {
   --radius: 0.875rem;
 
-  /* ===== Masar X Brand Palette =====
-     Deep forest green primary + warm cream + mint accent.
-     Color values derived directly from the brand reference images. */
+  /* ===== Masar X Brand Palette — v4 (Reference-Accurate) =====
+     Deep teal-green primary + cool grey background + emerald accent.
+     Values derived directly from the brand reference mockups. */
 
-  /* Brand greens */
-  --brand: #0E3B2E;            /* primary deep green — logo, buttons, headings */
-  --brand-deep: #082A20;       /* darker gradient end — hero backgrounds */
+  /* Brand greens — deep teal/forest */
+  --brand: #0D3B3E;            /* primary deep teal-green — logo, buttons, headings */
+  --brand-deep: #082A2C;       /* darker gradient end — hero backgrounds */
   --brand-soft: #1F7A4E;       /* secondary green — links, hover, accents */
-  --brand-mint: #7FD1A4;       /* mint accent — checkmarks, highlights, glow */
+  --brand-mint: #A3D9A5;       /* soft sage — map lines, glows */
+  --brand-emerald: #10B981;    /* emerald accent — success, FAB, active indicators */
 
-  /* Warm cream backgrounds */
-  --cream: #F7F3EA;            /* page background (auth, dashboard inner) */
-  --cream-deep: #EFE8D6;       /* gradient end, sidebar header */
+  /* Cool neutral backgrounds (reference uses cool grey, NOT warm cream) */
+  --cream: #F8FAFB;            /* page background — cool grey-white */
+  --cream-deep: #F1F4F6;       /* gradient end, sidebar header */
   --amber-accent: #D4A574;     /* package box amber, illustration accents */
 
   /* Neutrals */
-  --background: #FBF9F4;
-  --foreground: #0E1F18;
+  --background: #F8FAFB;       /* cool grey page background */
+  --foreground: #0F172A;       /* near-black for headings (slate-900) */
 
   --card: #FFFFFF;
-  --card-foreground: #0E1F18;
+  --card-foreground: #0F172A;
 
   --popover: #FFFFFF;
-  --popover-foreground: #0E1F18;
+  --popover-foreground: #0F172A;
 
-  --primary: #0E3B2E;
+  --primary: #0D3B3E;          /* deep teal-green */
   --primary-foreground: #FFFFFF;
 
-  --secondary: #F0EBDE;
-  --secondary-foreground: #0E3B2E;
+  --secondary: #F1F4F6;        /* cool grey */
+  --secondary-foreground: #0D3B3E;
 
-  --muted: #F4F1E8;
-  --muted-foreground: #6A7570;
+  --muted: #F1F4F6;
+  --muted-foreground: #6B7280; /* gray-500 */
 
-  --accent: #E8F2EC;
-  --accent-foreground: #0E3B2E;
+  --accent: #ECFDF5;           /* light emerald tint */
+  --accent-foreground: #0D3B3E;
 
-  --destructive: #C0392B;
-  --success: #1F7A4E;
-  --warning: #D68910;
-  --info: #2E86C1;
+  --destructive: #DC2626;      /* red-600 */
+  --success: #10B981;          /* emerald-500 */
+  --warning: #F59E0B;          /* amber-500 */
+  --info: #3B82F6;             /* blue-500 */
 
-  --border: #E5DFCF;
-  --input: #F0EBDE;
-  --ring: #1F7A4E;
+  --border: #E5E7EB;           /* gray-200 */
+  --input: #F1F4F6;
+  --ring: #10B981;             /* emerald focus ring */
 
-  --chart-1: #0E3B2E;
-  --chart-2: #1F7A4E;
-  --chart-3: #7FD1A4;
-  --chart-4: #D4A574;
-  --chart-5: #C0392B;
+  /* Chart palette aligned with status semantics */
+  --chart-1: #0D3B3E;
+  --chart-2: #10B981;
+  --chart-3: #3B82F6;
+  --chart-4: #F59E0B;
+  --chart-5: #8B5CF6;
 
+  /* Sidebar — clean white with green accents */
   --sidebar: #FFFFFF;
-  --sidebar-foreground: #0E1F18;
-  --sidebar-primary: #0E3B2E;
+  --sidebar-foreground: #0F172A;
+  --sidebar-primary: #0D3B3E;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #E8F2EC;
-  --sidebar-accent-foreground: #0E3B2E;
-  --sidebar-border: #E5DFCF;
-  --sidebar-ring: #1F7A4E;
+  --sidebar-accent: #ECFDF5;
+  --sidebar-accent-foreground: #0D3B3E;
+  --sidebar-border: #E5E7EB;
+  --sidebar-ring: #10B981;
 }
 
 .dark {
-  --brand: #1F7A4E;
-  --brand-deep: #0E3B2E;
-  --brand-soft: #7FD1A4;
-  --brand-mint: #7FD1A4;
-  --cream: #0E1F18;
-  --cream-deep: #082A20;
+  --brand: #10B981;
+  --brand-deep: #0D3B3E;
+  --brand-soft: #A3D9A5;
+  --brand-mint: #A3D9A5;
+  --brand-emerald: #10B981;
+
+  --cream: #0F172A;
+  --cream-deep: #082A2C;
   --amber-accent: #D4A574;
 
-  --background: #082A20;
-  --foreground: #F7F3EA;
+  --background: #082A2C;
+  --foreground: #F8FAFB;
 
-  --card: #0E3B2E;
-  --card-foreground: #F7F3EA;
+  --card: #0D3B3E;
+  --card-foreground: #F8FAFB;
 
-  --popover: #0E3B2E;
-  --popover-foreground: #F7F3EA;
+  --popover: #0D3B3E;
+  --popover-foreground: #F8FAFB;
 
-  --primary: #1F7A4E;
+  --primary: #10B981;
   --primary-foreground: #FFFFFF;
 
-  --secondary: #1A3329;
-  --secondary-foreground: #F7F3EA;
+  --secondary: #143E40;
+  --secondary-foreground: #F8FAFB;
 
-  --muted: #1A3329;
-  --muted-foreground: #9CA8A1;
+  --muted: #143E40;
+  --muted-foreground: #9CA3AF;
 
-  --accent: #1A3329;
-  --accent-foreground: #7FD1A4;
+  --accent: #143E40;
+  --accent-foreground: #A3D9A5;
 
-  --destructive: #E74C3C;
-  --success: #27AE60;
-  --warning: #F39C12;
-  --info: #3498DB;
+  --destructive: #EF4444;
+  --success: #10B981;
+  --warning: #F59E0B;
+  --info: #3B82F6;
 
   --border: rgba(255, 255, 255, 0.1);
   --input: rgba(255, 255, 255, 0.08);
-  --ring: #7FD1A4;
+  --ring: #10B981;
 
-  --chart-1: #7FD1A4;
-  --chart-2: #1F7A4E;
-  --chart-3: #D4A574;
-  --chart-4: #3498DB;
-  --chart-5: #E74C3C;
+  --chart-1: #A3D9A5;
+  --chart-2: #10B981;
+  --chart-3: #3B82F6;
+  --chart-4: #F59E0B;
+  --chart-5: #EF4444;
 
-  --sidebar: #0E3B2E;
-  --sidebar-foreground: #F7F3EA;
-  --sidebar-primary: #1F7A4E;
+  --sidebar: #0D3B3E;
+  --sidebar-foreground: #F8FAFB;
+  --sidebar-primary: #10B981;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #1A3329;
-  --sidebar-accent-foreground: #7FD1A4;
+  --sidebar-accent: #143E40;
+  --sidebar-accent-foreground: #A3D9A5;
   --sidebar-border: rgba(255, 255, 255, 0.1);
-  --sidebar-ring: #7FD1A4;
+  --sidebar-ring: #10B981;
 }
 
 @layer base {
@@ -196,18 +202,22 @@
 
 /* ===== Brand utility classes ===== */
 @layer utilities {
-  /* Gradients */
+  /* Gradients — deep teal-green hero backgrounds */
   .bg-brand-gradient {
-    background: linear-gradient(135deg, #0E3B2E 0%, #082A20 100%);
+    background: linear-gradient(135deg, #0D3B3E 0%, #082A2C 100%);
   }
   .bg-brand-gradient-soft {
-    background: linear-gradient(135deg, #0E3B2E 0%, #1F7A4E 100%);
+    background: linear-gradient(135deg, #0D3B3E 0%, #1F7A4E 100%);
   }
+  .bg-brand-gradient-emerald {
+    background: linear-gradient(135deg, #0D3B3E 0%, #10B981 100%);
+  }
+  /* Cool grey page gradient (replaces warm cream) */
   .bg-cream-gradient {
-    background: linear-gradient(180deg, #FBF9F4 0%, #F0EBDE 100%);
+    background: linear-gradient(180deg, #F8FAFB 0%, #F1F4F6 100%);
   }
   .bg-mint-gradient {
-    background: linear-gradient(135deg, #7FD1A4 0%, #1F7A4E 100%);
+    background: linear-gradient(135deg, #A3D9A5 0%, #1F7A4E 100%);
   }
   /* Text helpers */
   .text-balance {
@@ -232,12 +242,18 @@
   .scrollbar-thin::-webkit-scrollbar-track {
     background: transparent;
   }
-  /* Glass card effect */
+  /* Glass card effect — used on hero wallet cards */
   .glass-card {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+  }
+  .glass-card-strong {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.25);
   }
   /* Shimmer for skeletons */
   .shimmer {
@@ -248,12 +264,21 @@
     background-size: 200% 100%;
     animation: shimmer 1.5s infinite;
   }
-  /* Brand shadow */
+  /* Brand shadow — soft teal-green glow */
   .shadow-brand {
-    box-shadow: 0 4px 20px -2px rgba(14, 59, 46, 0.15);
+    box-shadow: 0 4px 20px -2px rgba(13, 59, 62, 0.15);
   }
   .shadow-brand-lg {
-    box-shadow: 0 10px 40px -4px rgba(14, 59, 46, 0.25);
+    box-shadow: 0 10px 40px -4px rgba(13, 59, 62, 0.25);
+  }
+  .shadow-emerald {
+    box-shadow: 0 8px 24px -4px rgba(16, 185, 129, 0.35);
+  }
+  .shadow-card-soft {
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  }
+  .shadow-card-hover {
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08), 0 2px 4px rgba(15, 23, 42, 0.04);
   }
   /* Mobile safe area */
   .safe-area-top {
@@ -300,6 +325,11 @@
   to { stroke-dashoffset: 0; }
 }
 
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+}
+
 .animate-float {
   animation: float 3s ease-in-out infinite;
 }
@@ -314,6 +344,9 @@
 }
 .animate-scale-in {
   animation: scale-in 0.2s ease-out;
+}
+.animate-glow-pulse {
+  animation: glow-pulse 2s ease-in-out infinite;
 }
 
 /* RTL-aware helpers */

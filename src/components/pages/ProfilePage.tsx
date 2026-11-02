@@ -16,11 +16,15 @@ import {
   Settings,
   Bell,
   Globe,
+  KeyRound,
+  Camera,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { storesApi } from "@/lib/api/services";
+import { useAuthStore } from "@/store/authStore";
+import { authApi, isDemoMode, storesApi } from "@/lib/api/services";
 import { ApiClientError } from "@/lib/api/client";
+import { clearProfileRestriction } from "@/lib/profileCompletion";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,6 +39,10 @@ export function ProfilePage() {
   const { user, token, completeProfile, logout } = useAuth();
   const [saving, setSaving] = useState(false);
   const [savingStore, setSavingStore] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   // Profile fields
   const [name, setName] = useState(user?.name ?? user?.fullName ?? "");
@@ -42,6 +50,8 @@ export function ProfilePage() {
   const [nationalId, setNationalId] = useState(user?.nationalId ?? "");
   const [city, setCity] = useState(user?.city ?? "");
   const [address, setAddress] = useState(user?.address ?? "");
+  const [iban, setIban] = useState(user?.iban ?? "");
+  const [bankName, setBankName] = useState(user?.bankName ?? "");
 
   // Store fields
   const [storeName, setStoreName] = useState(user?.store?.name ?? "");
@@ -57,6 +67,11 @@ export function ProfilePage() {
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    const normalizedIban = iban.replace(/\s+/g, "").toUpperCase();
+    if (normalizedIban && !/^SA\d{22}$/.test(normalizedIban)) {
+      toast.error("صيغة الآيبان السعودي غير صحيحة؛ يجب أن يبدأ بـ SA ويتكوّن من 24 خانة");
+      return;
+    }
     setSaving(true);
     try {
       await completeProfile({
@@ -66,8 +81,16 @@ export function ProfilePage() {
         nationalId: nationalId || undefined,
         city: city || undefined,
         address: address || undefined,
+        bankName: bankName.trim() || undefined,
+        iban: normalizedIban || undefined,
       });
-      toast.success("تم تحديث الملف الشخصي");
+      // Profile saved with name + email → lift any restricted-browsing flag.
+      if (name.trim().length >= 3 && email.trim()) {
+        clearProfileRestriction();
+        toast.success("تم تحديث الملف الشخصي — أُنشئت صلاحيات إنشاء الشحنات والعمليات المالية بالكامل");
+      } else {
+        toast.success("تم تحديث الملف الشخصي");
+      }
     } catch (e2) {
       toast.error(
         e2 instanceof ApiClientError
@@ -76,6 +99,25 @@ export function ProfilePage() {
       );
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token) return;
+    if (newPassword.length < 8) { toast.error("كلمة المرور الجديدة يجب ألا تقل عن 8 أحرف"); return; }
+    if (newPassword !== confirmPassword) { toast.error("تأكيد كلمة المرور غير مطابق"); return; }
+    setChangingPassword(true);
+    try {
+      await authApi.changePassword(token, { currentPassword, newPassword });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      toast.success("تم تحديث كلمة المرور");
+    } catch (error) {
+      toast.error(error instanceof ApiClientError ? error.message : "تعذّر تغيير كلمة المرور");
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -94,7 +136,27 @@ export function ProfilePage() {
         commercialRegister,
         crNumber: commercialRegister,
       });
-      toast.success("تم تحديث بيانات المتجر");
+      // Reflect the saved store on the auth user so isProfileComplete() sees it.
+      useAuthStore.getState().update({
+        store: {
+          ...(user?.store ?? {}),
+          name: storeName,
+          storeName,
+          phone: storePhone,
+          city: storeCity,
+          address: storeAddress,
+          vatNumber,
+          commercialRegister,
+          crNumber: commercialRegister,
+        },
+      });
+      // Merchant store details filled → lift restricted-browsing flag if profile is otherwise complete.
+      if (storeName.trim().length >= 2 && commercialRegister.trim().length >= 4) {
+        clearProfileRestriction();
+        toast.success("تم تحديث بيانات المتجر — أُنشئت صلاحيات إنشاء الشحنات بالكامل");
+      } else {
+        toast.success("تم تحديث بيانات المتجر");
+      }
     } catch (e) {
       toast.error(
         e instanceof ApiClientError ? e.message : "تعذّر حفظ بيانات المتجر"
@@ -149,11 +211,8 @@ export function ProfilePage() {
           </div>
           <div className="px-5 pb-5 -mt-10">
             <div className="flex flex-col sm:flex-row sm:items-end gap-4">
-              <Avatar className="h-20 w-20 border-4 border-card shrink-0">
-                <AvatarFallback className="bg-primary/10 text-primary text-2xl font-bold">
-                  {initials(user?.name)}
-                </AvatarFallback>
-              </Avatar>
+              {/* NEW: Avatar with upload overlay */}
+              <ProfileAvatar accountType={user?.accountType === "INDIVIDUAL" ? "customer" : "merchant"} name={user?.name} />
               <div className="flex-1 space-y-1 pt-2">
                 <h2 className="text-xl font-bold text-foreground">
                   {user?.name ?? user?.fullName ?? "مستخدم مسار"}
@@ -170,7 +229,7 @@ export function ProfilePage() {
                     className="bg-primary/5 text-primary border-primary/20"
                   >
                     {user?.accountType === "INDIVIDUAL" ||
-                    user?.accountType === "customer"
+                    user?.accountType === ("customer" as never)
                       ? "عميل"
                       : "تاجر"}
                   </Badge>
@@ -241,6 +300,22 @@ export function ProfilePage() {
                 <Input
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
+                />
+              </Field>
+              <Field icon={<Building2 className="h-4 w-4" />} label="اسم البنك لتحويل مبالغ COD">
+                <Input
+                  value={bankName}
+                  onChange={(e) => setBankName(e.target.value)}
+                  placeholder="اسم البنك"
+                />
+              </Field>
+              <Field icon={<CreditCard className="h-4 w-4" />} label="رقم الآيبان لاستلام مستحقات COD">
+                <Input
+                  value={iban}
+                  onChange={(e) => setIban(e.target.value.toUpperCase())}
+                  placeholder="SA00 0000 0000 0000 0000 0000"
+                  dir="ltr"
+                  autoComplete="off"
                 />
               </Field>
               <Button type="submit" disabled={saving} className="gap-2">
@@ -318,6 +393,24 @@ export function ProfilePage() {
         </Card>
       </div>
 
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <KeyRound className="h-4 w-4 text-primary" /> تغيير كلمة المرور
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">تُرسل عملية التغيير إلى الخادم بعد التحقق من كلمة المرور الحالية.</p>
+          {isDemoMode() && <p className="rounded-md bg-amber-500/5 px-3 py-2 text-xs text-amber-700">وضع العرض التجريبي: هذه العملية محاكاة ولا تغيّر بيانات اعتماد حساب حقيقي.</p>}
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleChangePassword} className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="space-y-2"><Label>كلمة المرور الحالية</Label><Input type="password" autoComplete="current-password" required value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} /></div>
+            <div className="space-y-2"><Label>كلمة المرور الجديدة</Label><Input type="password" autoComplete="new-password" minLength={8} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required /></div>
+            <div className="space-y-2"><Label>تأكيد كلمة المرور الجديدة</Label><Input type="password" autoComplete="new-password" minLength={8} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required /></div>
+            <div className="md:col-span-3"><Button type="submit" disabled={changingPassword || !token} className="gap-2">{changingPassword && <Loader2 className="h-4 w-4 animate-spin" />} تحديث كلمة المرور</Button></div>
+          </form>
+        </CardContent>
+      </Card>
+
       {/* Quick settings */}
       <Card>
         <CardHeader className="pb-3">
@@ -390,5 +483,80 @@ function SettingRow({
         <p className="text-xs text-muted-foreground">{desc}</p>
       </div>
     </button>
+  );
+}
+
+/* ============================================================================
+ * NEW: ProfileAvatar — avatar with upload overlay for customer/store logo.
+ * Persists the chosen image to localStorage so it stays across page navigation.
+ * ==========================================================================*/
+const AVATAR_STORAGE_KEY = "masar-x-avatar";
+
+function loadStoredAvatar(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem(AVATAR_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function ProfileAvatar({
+  accountType,
+  name,
+}: {
+  accountType: "merchant" | "customer";
+  name?: string;
+}) {
+  const [preview, setPreview] = useState<string | null>(loadStoredAvatar);
+  const label = accountType === "merchant" ? "شعار المتجر" : "الصورة الشخصية";
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("حجم الصورة يجب ألا يتجاوز 5 ميجابايت");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setPreview(dataUrl);
+      try {
+        window.localStorage.setItem(AVATAR_STORAGE_KEY, dataUrl);
+      } catch {
+        // ignore storage errors
+      }
+      toast.success(`تم تحديث ${label}`);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <div className="relative shrink-0">
+      <div className="h-20 w-20 rounded-full border-4 border-card bg-primary/10 overflow-hidden flex items-center justify-center">
+        {preview ? (
+          <img src={preview} alt={label} className="h-full w-full object-cover" />
+        ) : (
+          <span className="text-primary text-2xl font-bold">
+            {initials(name)}
+          </span>
+        )}
+      </div>
+      <label
+        htmlFor="profile-avatar-upload"
+        className="absolute bottom-0 left-0 flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground cursor-pointer shadow-md hover:bg-primary/90 transition-colors"
+        title={`تحميل ${label}`}
+      >
+        <Camera className="h-3.5 w-3.5" />
+      </label>
+      <input
+        id="profile-avatar-upload"
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        onChange={handleFile}
+        className="hidden"
+      />
+    </div>
   );
 }

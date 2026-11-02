@@ -123,23 +123,25 @@ export function getStatusMeta(status: ShipmentStatus): StatusMeta {
 export function StatusBadge({
   status,
   size = "md",
+  withIcon = false,
 }: {
   status: ShipmentStatus;
   size?: "sm" | "md";
+  withIcon?: boolean;
 }) {
   const meta = getStatusMeta(status);
   const Icon = meta.icon;
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border font-medium",
+        "inline-flex items-center gap-1.5 rounded-full border font-semibold whitespace-nowrap",
         meta.className,
         size === "sm" ? "px-2 py-0.5 text-[10px]" : "px-2.5 py-1 text-xs"
       )}
     >
-      <span className={cn("h-1.5 w-1.5 rounded-full", meta.dot)} />
+      <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", meta.dot)} />
       {meta.label}
-      {Icon && (
+      {withIcon && Icon && (
         <Icon className={cn(size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5")} />
       )}
     </span>

@@ -1,7 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useSyncExternalStore, useState } from "react";
 import { walletApi } from "@/lib/api/services";
+import {
+  fetchSwr,
+  invalidateSwr,
+  isStale,
+  readSwr,
+  subscribeSwr,
+  SwrStaleTime,
+} from "@/lib/api/swrCache";
 import type { Wallet, WalletTransaction } from "@/types/api";
 import { ApiClientError } from "@/lib/api/client";
 
@@ -15,37 +23,73 @@ function unwrapList<T>(
   return [];
 }
 
+const WALLET_KEY = (token: string) => `wallet:${token}`;
+const WALLET_TX_KEY = (token: string) => `wallet-tx:${token}`;
+
 export function useWallet(token: string | null) {
-  const [wallet, setWallet] = useState<Wallet | null>(null);
-  const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const walletKey = token ? WALLET_KEY(token) : "";
+  const txKey = token ? WALLET_TX_KEY(token) : "";
+
+  useSyncExternalStore(
+    useCallback(
+      (cb) => (walletKey ? subscribeSwr(walletKey, cb) : () => {}),
+      [walletKey]
+    ),
+    () => (walletKey ? readSwr<Wallet>(walletKey) : undefined),
+    () => undefined
+  );
+  useSyncExternalStore(
+    useCallback(
+      (cb) => (txKey ? subscribeSwr(txKey, cb) : () => {}),
+      [txKey]
+    ),
+    () => (txKey ? readSwr<WalletTransaction[]>(txKey) : undefined),
+    () => undefined
+  );
+
+  const wallet = walletKey ? readSwr<Wallet>(walletKey) ?? null : null;
+  const transactions = txKey ? readSwr<WalletTransaction[]>(txKey) ?? [] : [];
 
   const reload = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     setError(null);
     try {
-      const [balRes, txRes] = await Promise.all([
-        walletApi.balance(token).catch(() => null),
-        walletApi.transactions(token).catch(() => null),
+      await Promise.allSettled([
+        fetchSwr(
+          WALLET_KEY(token),
+          async () => {
+            return await walletApi.balance(token);
+          },
+          SwrStaleTime.LIVE
+        ),
+        fetchSwr(
+          WALLET_TX_KEY(token),
+          async () => {
+            const r = await walletApi.transactions(token);
+            return unwrapList<WalletTransaction>(
+              r as WalletTransaction[] | { data: WalletTransaction[] }
+            );
+          },
+          SwrStaleTime.LIVE
+        ),
       ]);
-      setWallet(balRes);
-      setTransactions(
-        unwrapList<WalletTransaction>(
-          txRes as WalletTransaction[] | { data: WalletTransaction[] }
-        )
-      );
+      setLoading(false);
     } catch (e) {
       setError(e instanceof ApiClientError ? e.message : "fetch_error");
-    } finally {
       setLoading(false);
     }
   }, [token]);
 
   useEffect(() => {
-    void reload();
-  }, [reload]);
+    if (!token) return;
+    if (isStale(WALLET_KEY(token)) || isStale(WALLET_TX_KEY(token))) {
+      void reload();
+    }
+  }, [token, reload]);
 
   return {
     wallet,
@@ -53,7 +97,10 @@ export function useWallet(token: string | null) {
     loading,
     error,
     reload,
-    setWallet,
-    setTransactions,
+    invalidate: () => {
+      if (!token) return;
+      invalidateSwr(WALLET_KEY(token));
+      invalidateSwr(WALLET_TX_KEY(token));
+    },
   };
 }

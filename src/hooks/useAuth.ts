@@ -2,11 +2,10 @@
 
 import { useCallback, useEffect } from "react";
 import { useAuthStore } from "@/store/authStore";
-import { authApi } from "@/lib/api/services";
-import type { AccountType, UserProfile } from "@/types/api";
+import { authApi, isDemoMode } from "@/lib/api/services";
+import type { AccountType, AuthSession, UserProfile } from "@/types/api";
 import { ApiClientError } from "@/lib/api/client";
 import { useRouterStore } from "@/store/routerStore";
-import { isDemoMode } from "@/lib/api/services";
 
 /** UI-friendly alias — convert from MERCHANT/INDIVIDUAL to merchant/customer. */
 export type UiAccountType = "merchant" | "customer";
@@ -57,10 +56,9 @@ export function useAuth() {
     []
   );
 
-  const verifyOtp = useCallback(
-    async (phone: string, code: string, accountType: UiAccountType) => {
-      const resp = await authApi.verifyOtp(phone, code, toApiType(accountType));
-      const accessToken = (resp as { accessToken?: string }).accessToken;
+  const acceptSession = useCallback(
+    (resp: AuthSession, phone: string, accountType: UiAccountType) => {
+      const accessToken = resp.accessToken;
       if (!accessToken) {
         throw new ApiClientError({
           status: 500,
@@ -68,53 +66,68 @@ export function useAuth() {
           message: "لم يتم استلام رمز الوصول من الخادم",
         });
       }
-      const newSession = {
+      const apiAccountType = resp.accountType ?? toApiType(accountType);
+      setSession({
         accessToken,
-        refreshToken: (resp as { refreshToken?: string }).refreshToken,
-        accountType: toApiType(accountType),
-        phone,
+        refreshToken: resp.refreshToken,
+        accountType: apiAccountType,
+        phone: resp.phone ?? phone,
+      });
+      const legacyResponse = resp as AuthSession & Partial<UserProfile>;
+      const profile = resp.user ?? {
+        id: legacyResponse.id,
+        name: legacyResponse.name,
+        fullName: legacyResponse.fullName,
+        email: legacyResponse.email,
+        role: legacyResponse.role,
+        status: legacyResponse.status,
       };
-      setSession(newSession);
-      const me: UserProfile = {
-        id: (resp as { id?: string }).id,
-        name: (resp as { name?: string }).name,
-        fullName: (resp as { fullName?: string }).fullName,
-        phone,
-        email: (resp as { email?: string }).email,
-        accountType: toApiType(accountType),
-      };
-      setUser(me);
+      setUser({
+        ...profile,
+        phone: profile.phone ?? resp.phone ?? phone,
+        accountType: profile.accountType ?? apiAccountType,
+      });
       navigate("dashboard");
       return resp;
     },
     [setSession, setUser, navigate]
   );
 
+  const verifyOtp = useCallback(
+    async (phone: string, code: string, accountType: UiAccountType) => {
+      const resp = await authApi.verifyOtp(phone, code, toApiType(accountType));
+      return acceptSession(resp as AuthSession, phone, accountType);
+    },
+    [acceptSession]
+  );
+
   /**
-   * Demo-mode login helper — accepts phone + any password and
-   * short-circuits to the mock verifyOtp with code "1234".
-   *
-   * NOTE: In real mode, the backend does NOT expose a password
-   * login endpoint for merchants yet (only OTP). When a password
-   * endpoint is added (see BACKEND_NOTES.md), swap this for a
-   * direct password call.
+   * Uses the real password-login contract when the backend has deployed it.
+   * For backward compatibility only, an explicitly missing/unavailable route
+   * falls back to the existing OTP flow; invalid credentials never do.
    */
   const loginWithPassword = useCallback(
-    async (phone: string, _password: string, accountType: UiAccountType) => {
+    async (phone: string, password: string, accountType: UiAccountType) => {
       if (isDemoMode()) {
-        // Demo: skip OTP, go straight to verify with 1234
-        return verifyOtp(phone, "1234", accountType);
+        const resp = await authApi.login({ phone, password, accountType: toApiType(accountType) });
+        return acceptSession(resp, phone, accountType);
       }
-      // Real: send OTP first, let UI prompt for the code.
-      // This is a fallback until the backend exposes a password endpoint.
-      await authApi.requestOtp(phone, toApiType(accountType));
-      throw new ApiClientError({
-        status: 202,
-        code: "OTP_REQUIRED",
-        message: "تم إرسال رمز تحقق إلى رقم جوالك. الرجاء إدخاله.",
-      });
+      try {
+        const resp = await authApi.login({ phone, password, accountType: toApiType(accountType) });
+        return acceptSession(resp, phone, accountType);
+      } catch (error) {
+        const missingPasswordEndpoint = error instanceof ApiClientError &&
+          (error.status === 404 || error.status === 405 || error.status === 501 || error.code === "PASSWORD_LOGIN_NOT_CONFIGURED");
+        if (!missingPasswordEndpoint) throw error;
+        await authApi.requestOtp(phone, toApiType(accountType));
+        throw new ApiClientError({
+          status: 202,
+          code: "OTP_REQUIRED",
+          message: "تسجيل الدخول بكلمة المرور غير مفعّل في الخادم بعد. أرسلنا رمز تحقق بديلًا إلى جوالك.",
+        });
+      }
     },
-    [verifyOtp]
+    [acceptSession]
   );
 
   const logout = useCallback(async () => {

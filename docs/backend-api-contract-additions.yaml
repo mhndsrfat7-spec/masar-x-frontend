@@ -1,0 +1,618 @@
+openapi: 3.1.0
+info:
+  title: Masar X Backend API - Proposed Frontend Contract Additions
+  version: 1.0.0
+  description: >-
+    Delta contract requested by the Masar X frontend. These routes are proposals
+    to be implemented or reconciled with the backend OpenAPI spec; this file is
+    not evidence that the backend currently implements them.
+servers:
+  - url: https://YOUR_BACKEND_DOMAIN/api/v1
+    description: Replace with the backend HTTPS API base URL.
+security:
+  - bearerAuth: []
+paths:
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: Login with phone and password
+      operationId: passwordLogin
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordLoginRequest'
+      responses:
+        '200':
+          description: Authenticated session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSession'
+        '400': { description: Invalid request }
+        '401': { description: Invalid credentials }
+        '423': { description: Account locked or suspended }
+        '429': { description: Too many attempts }
+  /auth/forgot-password:
+    post:
+      tags: [Authentication]
+      summary: Request a password recovery OTP
+      operationId: forgotPassword
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordRecoveryRequest'
+      responses:
+        '200':
+          description: Generic response that does not disclose account existence
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasswordActionResponse'
+        '400': { description: Invalid request }
+        '429': { description: Too many attempts }
+  /auth/reset-password:
+    post:
+      tags: [Authentication]
+      summary: Reset password using one-time recovery code
+      operationId: resetPassword
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+      responses:
+        '200':
+          description: Password reset accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasswordActionResponse'
+        '400': { description: Password policy or request validation failed }
+        '401': { description: Invalid recovery code }
+        '410': { description: Recovery code expired or already used }
+        '429': { description: Too many attempts }
+  /auth/change-password:
+    post:
+      tags: [Authentication]
+      summary: Change password for authenticated user
+      operationId: changePassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordChangeRequest'
+      responses:
+        '200':
+          description: Password changed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasswordActionResponse'
+        '400': { description: Password policy or request validation failed }
+        '401': { description: Current password is incorrect or token invalid }
+        '429': { description: Too many attempts }
+  /customers/lookup-by-code:
+    get:
+      tags: [Customers]
+      summary: Resolve SPL short address or customer alias
+      operationId: lookupCustomerByShortCode
+      parameters:
+        - in: query
+          name: code
+          required: true
+          schema: { type: string, minLength: 3, maxLength: 64 }
+      responses:
+        '200':
+          description: Resolved contact/address details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShortCodeLookupResult'
+        '400': { description: Invalid code }
+        '403': { description: Caller cannot access resolved contact }
+        '404': { description: Code not found }
+  /public/carriers/{carrierCode}/capabilities:
+    get:
+      tags: [Carriers]
+      summary: Get public carrier capabilities and dynamic required fields
+      operationId: getCarrierCapabilities
+      security: []
+      parameters:
+        - in: path
+          name: carrierCode
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 40 }
+      responses:
+        '200':
+          description: Public carrier capability description (must not contain credentials)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CarrierCapabilityResponse'
+        '404': { description: Carrier unavailable or inactive }
+  /weight-disputes:
+    get:
+      tags: [WeightDisputes]
+      summary: List weight and dimension disputes for current account
+      operationId: listWeightDisputes
+      parameters:
+        - in: query
+          name: status
+          schema: { $ref: '#/components/schemas/WeightDisputeStatus' }
+        - in: query
+          name: shipmentId
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - in: query
+          name: offset
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        '200':
+          description: Paginated dispute list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeightDisputeListResponse'
+        '401': { description: Authentication required }
+  /shipments/{shipmentId}/weight-disputes:
+    post:
+      tags: [WeightDisputes]
+      summary: Create dispute for an owned shipment
+      operationId: createShipmentWeightDispute
+      parameters:
+        - in: path
+          name: shipmentId
+          required: true
+          schema: { type: string }
+        - in: header
+          name: Idempotency-Key
+          required: false
+          schema: { type: string, maxLength: 128 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWeightDisputeRequest'
+      responses:
+        '201':
+          description: Dispute created; no automatic financial adjustment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeightDispute'
+        '400': { description: Invalid dispute data }
+        '403': { description: Shipment is not owned by the caller }
+        '404': { description: Shipment not found }
+        '409': { description: Duplicate active dispute }
+  /weight-disputes/{id}:
+    get:
+      tags: [WeightDisputes]
+      summary: Get dispute details
+      operationId: getWeightDispute
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Dispute detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeightDispute'
+        '403': { description: Caller cannot access dispute }
+        '404': { description: Dispute not found }
+  /weight-disputes/{id}/attachments:
+    post:
+      tags: [WeightDisputes]
+      summary: Attach previously uploaded evidence to a dispute
+      operationId: attachWeightDisputeEvidence
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttachEvidenceRequest'
+      responses:
+        '201':
+          description: Evidence linked to dispute
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeightDisputeAttachment'
+        '400': { description: Invalid upload receipt }
+        '403': { description: Caller cannot attach evidence }
+        '404': { description: Dispute or file not found }
+  /integrations:
+    get:
+      tags: [Integrations]
+      summary: Get redacted integration connection overview
+      operationId: getIntegrationOverview
+      responses:
+        '200':
+          description: Connection states and non-secret public metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationsOverview'
+        '403': { description: ADMIN or SUPER_ADMIN role required }
+  /integrations/events:
+    get:
+      tags: [Integrations]
+      summary: List integration and webhook events
+      operationId: listIntegrationEvents
+      parameters:
+        - in: query
+          name: provider
+          schema: { $ref: '#/components/schemas/IntegrationProvider' }
+        - in: query
+          name: status
+          schema: { type: string, enum: [RECEIVED, PROCESSED, FAILED, IGNORED, RETRYING] }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 30 }
+        - in: query
+          name: offset
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        '200':
+          description: Paginated integration events
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationEventListResponse'
+        '403': { description: ADMIN or SUPER_ADMIN role required }
+  /integrations/events/{id}:
+    get:
+      tags: [Integrations]
+      summary: Get redacted event details
+      operationId: getIntegrationEvent
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Safe event details with credentials and PII redacted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationEventDetails'
+        '403': { description: ADMIN or SUPER_ADMIN role required }
+        '404': { description: Event not found }
+  /integrations/whatsapp/connect:
+    post:
+      tags: [Integrations]
+      summary: Start Meta WhatsApp Business OAuth or Embedded Signup
+      operationId: startWhatsAppConnection
+      responses:
+        '200':
+          description: Server-generated Meta authorization URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WhatsAppConnectResponse'
+        '403': { description: ADMIN or SUPER_ADMIN role required }
+        '409': { description: Connection is already in progress }
+  /integrations/whatsapp/disconnect:
+    post:
+      tags: [Integrations]
+      summary: Revoke and disconnect WhatsApp integration
+      operationId: disconnectWhatsApp
+      responses:
+        '200':
+          description: Disconnect operation accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean, const: true }
+        '403': { description: ADMIN or SUPER_ADMIN role required }
+        '409': { description: No active connection or invalid state }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    AccountType:
+      type: string
+      enum: [MERCHANT, INDIVIDUAL]
+    AuthSession:
+      type: object
+      required: [accessToken, accountType]
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+        expiresAt: { type: integer, format: int64 }
+        accountType: { $ref: '#/components/schemas/AccountType' }
+        phone: { type: string }
+        user:
+          type: object
+          additionalProperties: true
+          properties:
+            id: { type: string }
+            name: { type: string }
+            phone: { type: string }
+            email: { type: string, format: email }
+            role: { type: string }
+    PasswordLoginRequest:
+      type: object
+      required: [phone, password, accountType]
+      properties:
+        phone: { type: string, minLength: 8, maxLength: 20 }
+        password: { type: string, minLength: 8, maxLength: 128, writeOnly: true }
+        accountType: { $ref: '#/components/schemas/AccountType' }
+    PasswordRecoveryRequest:
+      type: object
+      required: [phone, accountType]
+      properties:
+        phone: { type: string, minLength: 8, maxLength: 20 }
+        accountType: { $ref: '#/components/schemas/AccountType' }
+    PasswordResetRequest:
+      allOf:
+        - $ref: '#/components/schemas/PasswordRecoveryRequest'
+        - type: object
+          required: [code, newPassword]
+          properties:
+            code: { type: string, pattern: '^\\d{6}$' }
+            newPassword: { type: string, minLength: 8, maxLength: 128, writeOnly: true }
+    PasswordChangeRequest:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword: { type: string, minLength: 8, maxLength: 128, writeOnly: true }
+        newPassword: { type: string, minLength: 8, maxLength: 128, writeOnly: true }
+    PasswordActionResponse:
+      type: object
+      required: [ok]
+      properties:
+        ok: { type: boolean }
+        message: { type: string }
+        expiresInSec: { type: integer, minimum: 1 }
+    ShortCodeLookupResult:
+      type: object
+      required: [code, source, contact]
+      properties:
+        code: { type: string }
+        source: { type: string, enum: [SPL, CUSTOMER_ALIAS, CUSTOMER_ID] }
+        resolvedAt: { type: string, format: date-time }
+        contact:
+          type: object
+          required: [id]
+          additionalProperties: true
+          properties:
+            id: { type: string }
+            name: { type: string }
+            fullName: { type: string }
+            phone: { type: string }
+            email: { type: string, format: email }
+            city: { type: string }
+            cityName: { type: string }
+            cityId: { type: string }
+            address: { type: string }
+            shortCode: { type: string }
+            type: { type: string, enum: [SENDER, RECEIVER, BOTH] }
+    CarrierCapabilityResponse:
+      type: object
+      required: [carrier, capabilities, services, customFields]
+      properties:
+        carrier:
+          type: object
+          required: [id, code, nameAr, nameEn]
+          additionalProperties: true
+          properties:
+            id: { type: string }
+            code: { type: string }
+            nameAr: { type: string }
+            nameEn: { type: string }
+            apiMode: { type: string, enum: [API, MANUAL, MOCK] }
+            codSupported: { type: boolean }
+            active: { type: boolean }
+        capabilities:
+          type: array
+          items: { type: string }
+        services:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+            properties:
+              code: { type: string }
+              name: { type: string }
+              nameAr: { type: string }
+              domestic: { type: boolean }
+              international: { type: boolean }
+        customFields:
+          type: array
+          items: { $ref: '#/components/schemas/CarrierCustomField' }
+        updatedAt: { type: string, format: date-time }
+    CarrierCustomField:
+      type: object
+      required: [key, labelAr, type, required]
+      properties:
+        key: { type: string, pattern: '^[a-zA-Z][a-zA-Z0-9_]*$' }
+        labelAr: { type: string }
+        labelEn: { type: string }
+        type: { type: string, enum: [TEXT, NUMBER, SELECT, BOOLEAN, DATE] }
+        required: { type: boolean }
+        placeholder: { type: string }
+        options:
+          type: array
+          items:
+            type: object
+            required: [label, value]
+            properties:
+              label: { type: string }
+              value: { type: string }
+        min: { type: number }
+        max: { type: number }
+        pattern: { type: string }
+        helpTextAr: { type: string }
+    WeightDisputeStatus:
+      type: string
+      enum: [SUBMITTED, UNDER_REVIEW, NEED_MORE_INFO, APPROVED, REJECTED, CLOSED]
+    WeightDisputeReasonCode:
+      type: string
+      enum: [WEIGHT_MISMATCH, DIMENSION_MISMATCH, DUPLICATE_CHARGE, OTHER]
+    WeightDispute:
+      type: object
+      required: [id, shipmentId, reasonCode, description, status, createdAt]
+      properties:
+        id: { type: string }
+        shipmentId: { type: string }
+        trackingNumber: { type: string }
+        carrierCode: { type: string }
+        carrierNameAr: { type: string }
+        reasonCode: { $ref: '#/components/schemas/WeightDisputeReasonCode' }
+        description: { type: string }
+        status: { $ref: '#/components/schemas/WeightDisputeStatus' }
+        customerMeasuredWeightGrams: { type: integer, minimum: 1 }
+        carrierMeasuredWeightGrams: { type: integer, minimum: 1, readOnly: true }
+        chargeDifferenceHal: { type: integer, minimum: 0, readOnly: true }
+        resolutionMessage: { type: string }
+        attachments:
+          type: array
+          items: { $ref: '#/components/schemas/WeightDisputeAttachment' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    CreateWeightDisputeRequest:
+      type: object
+      required: [reasonCode, description, requestedReview]
+      properties:
+        reasonCode: { $ref: '#/components/schemas/WeightDisputeReasonCode' }
+        description: { type: string, minLength: 20, maxLength: 4000 }
+        customerMeasuredWeightGrams: { type: integer, minimum: 100 }
+        requestedReview: { type: boolean, const: true }
+      additionalProperties: false
+    WeightDisputeListResponse:
+      type: object
+      required: [data, total, limit, offset]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/WeightDispute' }
+        total: { type: integer, minimum: 0 }
+        limit: { type: integer, minimum: 1 }
+        offset: { type: integer, minimum: 0 }
+    PresignedUploadReceipt:
+      type: object
+      required: [fileId, storageKey, fileName, mimeType, sizeBytes]
+      properties:
+        fileId: { type: string }
+        storageKey: { type: string }
+        fileName: { type: string }
+        mimeType: { type: string }
+        sizeBytes: { type: integer, minimum: 1 }
+    AttachEvidenceRequest:
+      $ref: '#/components/schemas/PresignedUploadReceipt'
+    WeightDisputeAttachment:
+      allOf:
+        - $ref: '#/components/schemas/PresignedUploadReceipt'
+        - type: object
+          properties:
+            id: { type: string }
+            createdAt: { type: string, format: date-time }
+    IntegrationProvider:
+      type: string
+      enum: [WHATSAPP, MOYASAR, PAYPAL, CARRIER]
+    IntegrationStatus:
+      type: string
+      enum: [CONNECTED, PENDING, ERROR, NOT_CONFIGURED, DISCONNECTED]
+    IntegrationConnection:
+      type: object
+      required: [id, provider, nameAr, status]
+      properties:
+        id: { type: string }
+        provider: { $ref: '#/components/schemas/IntegrationProvider' }
+        nameAr: { type: string }
+        status: { $ref: '#/components/schemas/IntegrationStatus' }
+        connectedAt: { type: string, format: date-time }
+        lastCheckedAt: { type: string, format: date-time }
+        lastErrorCode: { type: string }
+        lastErrorMessageAr: { type: string }
+        publicDetails:
+          type: object
+          additionalProperties: { type: [string, number, boolean, 'null'] }
+    IntegrationsOverview:
+      type: object
+      required: [connections]
+      properties:
+        connections:
+          type: array
+          items: { $ref: '#/components/schemas/IntegrationConnection' }
+        whatsapp:
+          type: object
+          properties:
+            status: { $ref: '#/components/schemas/IntegrationStatus' }
+            displayPhoneNumber: { type: string }
+            verifiedName: { type: string }
+            businessAccountId: { type: string }
+            phoneNumberId: { type: string }
+            webhookVerified: { type: boolean }
+            lastInboundAt: { type: string, format: date-time }
+            lastOutboundAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    IntegrationEvent:
+      type: object
+      required: [id, provider, eventType, direction, status, occurredAt]
+      properties:
+        id: { type: string }
+        provider: { $ref: '#/components/schemas/IntegrationProvider' }
+        eventType: { type: string }
+        direction: { type: string, enum: [INBOUND, OUTBOUND, INTERNAL] }
+        status: { type: string, enum: [RECEIVED, PROCESSED, FAILED, IGNORED, RETRYING] }
+        externalId: { type: string }
+        resourceType: { type: string }
+        resourceId: { type: string }
+        summaryAr: { type: string }
+        errorCode: { type: string }
+        errorMessageAr: { type: string }
+        occurredAt: { type: string, format: date-time }
+        processedAt: { type: string, format: date-time }
+    IntegrationEventListResponse:
+      type: object
+      required: [data, total, limit, offset]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/IntegrationEvent' }
+        total: { type: integer, minimum: 0 }
+        limit: { type: integer, minimum: 1 }
+        offset: { type: integer, minimum: 0 }
+    IntegrationEventDetails:
+      allOf:
+        - $ref: '#/components/schemas/IntegrationEvent'
+        - type: object
+          properties:
+            safePayload: { type: object, additionalProperties: true }
+            safeResponse: { type: object, additionalProperties: true }
+            attemptCount: { type: integer, minimum: 0 }
+    WhatsAppConnectResponse:
+      type: object
+      required: [authorizationUrl, expiresAt]
+      properties:
+        authorizationUrl: { type: string, format: uri }
+        expiresAt: { type: string, format: date-time }

@@ -33,8 +33,68 @@ export const MOCK_TOKEN = "mock-jwt-token-for-demo-purposes-only";
 /** Use real cities from the live API (51 cities) */
 export const mockCities = MOCK_CITIES;
 
-/** 3 real carriers from the live API */
+/** 5 Saudi carriers from the live API + brand reference (SMSA, Aramex, SPL, OTO, MW Express) */
 export const mockCarriers: Carrier[] = [
+  {
+    id: "cr-smsa",
+    code: "SMSA",
+    nameAr: "سمسا إكسبريس",
+    nameEn: "SMSA Express",
+    apiMode: "API",
+    codSupported: true,
+    capabilities: ["CREATE_SHIPMENT", "CANCEL_SHIPMENT", "TRACK", "DOWNLOAD_LABEL", "COD_SUPPORTED", "COD_REMITTANCE", "REQUEST_PICKUP", "MULTIPLE_SERVICES", "INTERNATIONAL"],
+    logoUrl: null,
+    services: [
+      { code: "DOM", name: "Domestic", nameAr: "شحن محلي", domestic: true, international: false },
+      { code: "INT", name: "International", nameAr: "شحن دولي", domestic: false, international: true },
+    ],
+    active: true,
+  },
+  {
+    id: "cr-aramex",
+    code: "ARAMEX",
+    nameAr: "أرامكس",
+    nameEn: "Aramex",
+    apiMode: "API",
+    codSupported: true,
+    capabilities: ["CREATE_SHIPMENT", "CANCEL_SHIPMENT", "TRACK", "DOWNLOAD_LABEL", "COD_SUPPORTED", "COD_REMITTANCE", "MULTIPLE_SERVICES", "INTERNATIONAL", "FRAGILE", "INSURANCE"],
+    logoUrl: null,
+    services: [
+      { code: "DOM", name: "Domestic", nameAr: "شحن محلي", domestic: true, international: false },
+      { code: "INT", name: "International", nameAr: "شحن دولي", domestic: false, international: true },
+      { code: "PRIORITY", name: "Priority", nameAr: "أولوية", domestic: true, international: true },
+    ],
+    active: true,
+  },
+  {
+    id: "cr-spl",
+    code: "SPL",
+    nameAr: "سبل — البريد السعودي",
+    nameEn: "SPL — Saudi Post",
+    apiMode: "API",
+    codSupported: false,
+    capabilities: ["CREATE_SHIPMENT", "CANCEL_SHIPMENT", "TRACK", "DOWNLOAD_LABEL", "MULTIPLE_SERVICES", "INTERNATIONAL"],
+    logoUrl: null,
+    services: [
+      { code: "REG", name: "Regular", nameAr: "عادي", domestic: true, international: false },
+      { code: "REG_INT", name: "International Regular", nameAr: "عادي دولي", domestic: false, international: true },
+    ],
+    active: true,
+  },
+  {
+    id: "cr-oto",
+    code: "OTO",
+    nameAr: "أوتو إكسبريس",
+    nameEn: "OTO Express",
+    apiMode: "API",
+    codSupported: true,
+    capabilities: ["CREATE_SHIPMENT", "CANCEL_SHIPMENT", "TRACK", "DOWNLOAD_LABEL", "COD_SUPPORTED", "COD_REMITTANCE", "REQUEST_PICKUP", "BULK_CREATE"],
+    logoUrl: null,
+    services: [
+      { code: "DOM", name: "Domestic", nameAr: "شحن محلي", domestic: true, international: false },
+    ],
+    active: true,
+  },
   {
     id: "cr-mwexpress",
     code: "MWEXPRESS",
@@ -43,15 +103,11 @@ export const mockCarriers: Carrier[] = [
     apiMode: "API",
     codSupported: true,
     capabilities: ["CREATE_SHIPMENT", "CANCEL_SHIPMENT", "TRACK", "DOWNLOAD_LABEL", "COD_SUPPORTED", "COD_REMITTANCE", "REFRIGERATED", "MULTIPLE_SERVICES"],
-  },
-  {
-    id: "cr-smsa",
-    code: "SMSA",
-    nameAr: "سمسا",
-    nameEn: "SMSA",
-    apiMode: "MANUAL",
-    codSupported: true,
-    capabilities: ["CREATE_SHIPMENT", "CANCEL_SHIPMENT", "TRACK", "DOWNLOAD_LABEL", "COD_SUPPORTED", "COD_REMITTANCE", "REQUEST_PICKUP"],
+    logoUrl: null,
+    services: [
+      { code: "EXP", name: "Express", nameAr: "سريع", domestic: true, international: false },
+    ],
+    active: true,
   },
   {
     id: "cr-mock",
@@ -61,6 +117,11 @@ export const mockCarriers: Carrier[] = [
     apiMode: "MOCK",
     codSupported: true,
     capabilities: ["CREATE_SHIPMENT", "CANCEL_SHIPMENT", "TRACK", "REQUEST_PICKUP", "DOWNLOAD_LABEL", "COD_SUPPORTED", "COD_REMITTANCE", "MULTIPLE_SERVICES", "INTERNATIONAL", "FRAGILE", "REFRIGERATED", "SCHEDULED_PICKUP", "RETURNS_SERVICE", "INSURANCE", "BULK_CREATE", "FETCH_WEIGHT_STATEMENT"],
+    logoUrl: null,
+    services: [
+      { code: "STD", name: "Standard", nameAr: "قياسي", domestic: true, international: true },
+    ],
+    active: true,
   },
 ];
 
@@ -100,9 +161,44 @@ export const mockUser: UserProfile = {
     status: "ACTIVE",
     balance: 254000,
   },
+  // Saved bank accounts — let merchants reuse them for withdrawals & bank-transfer topups
+  savedBankAccounts: [
+    {
+      id: "ba-001",
+      label: "حساب الراجحي الأساسي",
+      accountHolderName: "محمد عبدالله العتيبي",
+      bankName: "مصرف الراجحي",
+      iban: "SA0380000000608010167519",
+      isDefault: true,
+      createdAt: days(-30),
+    },
+    {
+      id: "ba-002",
+      label: "حساب الإنماء",
+      accountHolderName: "محمد عبدالله العتيبي",
+      bankName: "مصرف الإنماء",
+      iban: "SA0804000108020001033333",
+      isDefault: false,
+      createdAt: days(-15),
+    },
+  ],
   createdAt: days(-90),
   updatedAt: days(-1),
-};
+} as UserProfile & { savedBankAccounts: SavedBankAccount[] };
+
+/**
+ * Saved bank account — stored on the user profile, used for bank-transfer
+ * topups and COD/balance withdrawals so the merchant doesn't retype IBAN.
+ */
+export interface SavedBankAccount {
+  id: string;
+  label: string;
+  accountHolderName: string;
+  bankName: string;
+  iban: string;
+  isDefault: boolean;
+  createdAt: string;
+}
 
 /** ===== Address book — senders + receivers (Customers) ===== */
 export const mockCustomers: Customer[] = [
@@ -119,6 +215,7 @@ export const mockCustomers: Customer[] = [
     address: "طريق الملك عبدالعزيز، حي العليا، مبنى 12",
     notes: "الفرع الرئيسي — يستلم الساعة 9 صباحاً",
     type: "SENDER",
+    shortCode: "RRMA2929",
     shipmentsCount: 47,
     createdAt: days(-60),
   },
@@ -164,6 +261,7 @@ export const mockCustomers: Customer[] = [
     address: "حي الروضة، شارع التحلية، مبنى 23",
     notes: "الطابق الثاني — يفضّل التسليم صباحاً",
     type: "RECEIVER",
+    shortCode: "JDRW7721",
     shipmentsCount: 12,
     createdAt: days(-30),
   },
@@ -714,10 +812,19 @@ export const mockNotifications: NotificationItem[] = [
 
 /** Build a mock quote response (matches the real backend shape with halalas) */
 export function buildMockQuote(req: QuoteRequest): { best: QuoteResult; quotes: QuoteResult[] } {
-  const weightGrams = req.packages?.reduce(
+  const actualWeightGrams = req.packages?.reduce(
     (sum, p) => sum + (Number(p.weightGrams) || 0) * (Number(p.quantity) || 1),
     0
   ) ?? 1000;
+  const volumetricWeightGrams = req.packages?.reduce((sum, p) => {
+    const length = Number(p.length ?? 0);
+    const width = Number(p.width ?? 0);
+    const height = Number(p.height ?? 0);
+    if (!(length > 0 && width > 0 && height > 0)) return sum;
+    const quantity = Math.max(1, Number(p.quantity ?? 1));
+    return sum + Math.ceil((length * width * height * 1000) / 5000) * quantity;
+  }, 0) ?? 0;
+  const weightGrams = Math.max(actualWeightGrams, volumetricWeightGrams);
   const qty = req.packages?.reduce((sum, p) => sum + (Number(p.quantity) || 1), 0) ?? 1;
   const isCOD = req.paymentMode === "COD";
   const codAmountHal = isCOD ? (req.codAmountHal ?? 0) : 0;
@@ -734,6 +841,13 @@ export function buildMockQuote(req: QuoteRequest): { best: QuoteResult; quotes: 
       serviceCode: "EXP",
       serviceType: "EXP",
       chargeableGrams: weightGrams,
+      weightBreakdown: {
+        mode: "MAX_ACTUAL_VOLUMETRIC",
+        quantity: qty,
+        actualGrams: actualWeightGrams,
+        volumetricGrams: volumetricWeightGrams,
+        chargeableGrams: weightGrams,
+      },
       carrierNetHal: basePriceHal,
       marginHal,
       shippingPriceHal: basePriceHal + marginHal,
@@ -753,6 +867,13 @@ export function buildMockQuote(req: QuoteRequest): { best: QuoteResult; quotes: 
       serviceCode: "DOM",
       serviceType: "DOM",
       chargeableGrams: weightGrams,
+      weightBreakdown: {
+        mode: "MAX_ACTUAL_VOLUMETRIC",
+        quantity: qty,
+        actualGrams: actualWeightGrams,
+        volumetricGrams: volumetricWeightGrams,
+        chargeableGrams: weightGrams,
+      },
       carrierNetHal: Math.round(basePriceHal * 1.1),
       marginHal: Math.round(marginHal * 1.1),
       shippingPriceHal: Math.round((basePriceHal + marginHal) * 1.1),
@@ -772,6 +893,13 @@ export function buildMockQuote(req: QuoteRequest): { best: QuoteResult; quotes: 
       serviceCode: "STD",
       serviceType: "STD",
       chargeableGrams: weightGrams,
+      weightBreakdown: {
+        mode: "MAX_ACTUAL_VOLUMETRIC",
+        quantity: qty,
+        actualGrams: actualWeightGrams,
+        volumetricGrams: volumetricWeightGrams,
+        chargeableGrams: weightGrams,
+      },
       carrierNetHal: Math.round(basePriceHal * 0.9),
       marginHal: Math.round(marginHal * 0.9),
       shippingPriceHal: Math.round((basePriceHal + marginHal) * 0.9),

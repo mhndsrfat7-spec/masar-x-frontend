@@ -16,6 +16,7 @@ import {
   Hash,
   Loader2,
   Send,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouterStore } from "@/store/routerStore";
@@ -26,6 +27,7 @@ import { ApiClientError } from "@/lib/api/client";
 import { PageHeader, BackButton } from "@/components/common/PageHeader";
 import { LoadingState, ErrorState } from "@/components/common/StateViews";
 import { StatusBadge, getStatusMeta } from "@/components/common/StatusBadge";
+import { AwbWaybillModal } from "@/components/common/AwbWaybillModal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -47,6 +49,8 @@ export function ShipmentDetailsPage() {
   const [cancelling, setCancelling] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [printing, setPrinting] = useState(false);
+  // NEW: AWB modal state
+  const [awbOpen, setAwbOpen] = useState(false);
 
   useEffect(() => {
     if (!id) navigate("shipments");
@@ -161,6 +165,16 @@ export function ShipmentDetailsPage() {
                 <Printer className="h-4 w-4" />
               )}
               بطاقة الشحن
+            </Button>
+            {/* NEW: AWB waybill preview modal button */}
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5"
+              onClick={() => setAwbOpen(true)}
+            >
+              <FileText className="h-4 w-4" />
+              معاينة البوليصة
             </Button>
             {canConfirm && (
               <Button
@@ -487,6 +501,13 @@ export function ShipmentDetailsPage() {
           )}
         </div>
       </div>
+
+      {/* NEW: AWB waybill preview modal */}
+      <AwbWaybillModal
+        open={awbOpen}
+        onOpenChange={setAwbOpen}
+        shipment={item}
+      />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 /**
  * Masar X — API types derived from the live OpenAPI spec at
- * http://185.211.5.19:8081/api/v1/openapi.json
+ * https://YOUR_BACKEND_DOMAIN/api/v1/openapi.json
  *
  * Schemas are tuned to match the REAL backend response shapes we
  * discovered through live testing (e.g. halalas for prices, EN enums
@@ -36,6 +36,33 @@ export interface AuthSession {
   user?: UserProfile;
 }
 
+export interface PasswordLoginRequest {
+  phone: string;
+  password: string;
+  accountType: AccountType;
+}
+
+export interface PasswordRecoveryRequest {
+  phone: string;
+  accountType: AccountType;
+}
+
+export interface PasswordResetRequest extends PasswordRecoveryRequest {
+  code: string;
+  newPassword: string;
+}
+
+export interface PasswordChangeRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface PasswordActionResponse {
+  ok: boolean;
+  message?: string;
+  expiresInSec?: number;
+}
+
 export interface UserProfile {
   id?: string;
   name?: string;
@@ -43,6 +70,7 @@ export interface UserProfile {
   phone?: string;
   email?: string;
   accountType?: AccountType;
+  role?: "CUSTOMER" | "MERCHANT" | "STAFF" | "ADMIN" | "SUPER_ADMIN" | string;
   status?: string;
   nationalId?: string;
   bankName?: string;
@@ -91,6 +119,44 @@ export interface ShipmentPackage {
   description?: string;
   quantity?: number;
   [k: string]: unknown;
+}
+
+export interface CreateShipmentRequest {
+  originCityId: string;
+  destCityId: string;
+  senderName: string;
+  senderPhone: string;
+  senderCity?: string;
+  senderCityId?: string;
+  senderAddress?: string;
+  senderAddressCode?: string;
+  receiverName: string;
+  receiverPhone: string;
+  receiverCity?: string;
+  receiverCityId?: string;
+  receiverAddress?: string;
+  receiverAddressCode?: string;
+  carrierId?: string;
+  carrier?: string;
+  carrierCode?: string;
+  carrierName?: string;
+  carrierNameAr?: string;
+  serviceType?: string;
+  paymentMode: PaymentMode;
+  codAmount?: number;
+  codAmountHal?: number;
+  notes?: string;
+  carrierFields?: Record<string, string | number | boolean>;
+  packages: ShipmentPackage[];
+  weightGrams?: number;
+  weight?: number;
+  pieces?: number;
+  quantity?: number;
+  price?: number;
+  totalHal?: number;
+  shippingPriceHal?: number;
+  vatHal?: number;
+  currency?: "SAR";
 }
 
 export type ShipmentStatus =
@@ -337,12 +403,177 @@ export interface Customer {
   cityName?: string;
   cityId?: string;
   address?: string;
+  shortCode?: string;
   notes?: string;
   type?: "SENDER" | "RECEIVER" | "BOTH" | string;
   shipmentsCount?: number;
   createdAt?: string;
   updatedAt?: string;
   [k: string]: unknown;
+}
+
+
+/** Short-code lookup — authenticated resolution for SPL address codes and customer aliases. */
+export interface ShortCodeLookupResult {
+  code: string;
+  source: "SPL" | "CUSTOMER_ALIAS" | "CUSTOMER_ID";
+  contact: Customer;
+  resolvedAt?: string;
+}
+
+export type WeightDisputeStatus =
+  | "SUBMITTED"
+  | "UNDER_REVIEW"
+  | "NEED_MORE_INFO"
+  | "APPROVED"
+  | "REJECTED"
+  | "CLOSED";
+
+export type WeightDisputeReasonCode =
+  | "WEIGHT_MISMATCH"
+  | "DIMENSION_MISMATCH"
+  | "DUPLICATE_CHARGE"
+  | "OTHER";
+
+export interface WeightDisputeAttachment {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  downloadUrl?: string;
+  createdAt?: string;
+}
+
+export interface WeightDispute {
+  id: string;
+  shipmentId: string;
+  trackingNumber?: string;
+  carrierCode?: string;
+  carrierNameAr?: string;
+  reasonCode: WeightDisputeReasonCode;
+  description: string;
+  status: WeightDisputeStatus;
+  customerMeasuredWeightGrams?: number;
+  carrierMeasuredWeightGrams?: number;
+  chargeDifferenceHal?: number;
+  resolutionMessage?: string;
+  attachments?: WeightDisputeAttachment[];
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface CreateWeightDisputeRequest {
+  reasonCode: WeightDisputeReasonCode;
+  description: string;
+  customerMeasuredWeightGrams?: number;
+  requestedReview: true;
+}
+
+export interface WeightDisputeListResponse {
+  data: WeightDispute[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface CarrierCustomFieldOption {
+  label: string;
+  value: string;
+}
+
+export interface CarrierCustomField {
+  key: string;
+  labelAr: string;
+  labelEn?: string;
+  type: "TEXT" | "NUMBER" | "SELECT" | "BOOLEAN" | "DATE";
+  required: boolean;
+  placeholder?: string;
+  options?: CarrierCustomFieldOption[];
+  min?: number;
+  max?: number;
+  pattern?: string;
+  helpTextAr?: string;
+}
+
+export interface CarrierCapabilityResponse {
+  carrier: Carrier;
+  capabilities: string[];
+  services: CarrierService[];
+  customFields: CarrierCustomField[];
+  updatedAt?: string;
+}
+
+export type IntegrationStatus = "CONNECTED" | "PENDING" | "ERROR" | "NOT_CONFIGURED" | "DISCONNECTED";
+export type IntegrationProvider = "WHATSAPP" | "MOYASAR" | "PAYPAL" | "CARRIER";
+
+export interface IntegrationConnection {
+  id: string;
+  provider: IntegrationProvider;
+  nameAr: string;
+  status: IntegrationStatus;
+  connectedAt?: string;
+  lastCheckedAt?: string;
+  lastErrorCode?: string;
+  lastErrorMessageAr?: string;
+  publicDetails?: Record<string, string | number | boolean | null>;
+}
+
+export interface IntegrationsOverview {
+  connections: IntegrationConnection[];
+  whatsapp?: {
+    status: IntegrationStatus;
+    displayPhoneNumber?: string;
+    verifiedName?: string;
+    businessAccountId?: string;
+    phoneNumberId?: string;
+    webhookVerified?: boolean;
+    lastInboundAt?: string;
+    lastOutboundAt?: string;
+  };
+  updatedAt?: string;
+}
+
+export interface IntegrationEvent {
+  id: string;
+  provider: IntegrationProvider;
+  eventType: string;
+  direction: "INBOUND" | "OUTBOUND" | "INTERNAL";
+  status: "RECEIVED" | "PROCESSED" | "FAILED" | "IGNORED" | "RETRYING";
+  externalId?: string;
+  resourceType?: string;
+  resourceId?: string;
+  summaryAr?: string;
+  errorCode?: string;
+  errorMessageAr?: string;
+  occurredAt: string;
+  processedAt?: string;
+}
+
+export interface IntegrationEventListResponse {
+  data: IntegrationEvent[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface IntegrationEventDetails extends IntegrationEvent {
+  safePayload?: Record<string, unknown>;
+  safeResponse?: Record<string, unknown>;
+  attemptCount?: number;
+}
+
+export interface WhatsAppConnectResponse {
+  authorizationUrl: string;
+  expiresAt: string;
+}
+
+export interface PresignedUploadResponse {
+  uploadUrl: string;
+  fileId: string;
+  storageKey: string;
+  method: "PUT";
+  headers?: Record<string, string>;
+  expiresAt: string;
 }
 
 export interface Invoice {
@@ -410,6 +641,7 @@ export interface Carrier {
   capabilities?: string[];
   logoUrl?: string | null;
   services?: CarrierService[];
+  customFields?: CarrierCustomField[];
   active?: boolean;
   [k: string]: unknown;
 }

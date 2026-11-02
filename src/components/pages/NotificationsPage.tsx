@@ -19,7 +19,7 @@ import { timeAgo } from "@/lib/format";
 
 export function NotificationsPage() {
   const { token } = useAuth();
-  const { list, loading, error, reload, setList } = useNotifications(token);
+  const { list, loading, error, reload, markReadOptimistic } = useNotifications(token);
 
   const unread = list.filter((n) => !(n.read ?? n.isRead));
 
@@ -27,9 +27,7 @@ export function NotificationsPage() {
     if (!token || unread.length === 0) return;
     try {
       await notificationsApi.markRead(token, unread.map((n) => n.id));
-      setList(
-        list.map((n) => ({ ...n, read: true, isRead: true }))
-      );
+      markReadOptimistic(unread.map((n) => n.id));
       toast.success("تم تعليم جميع الإشعارات كمقروءة");
     } catch (e) {
       toast.error(
@@ -42,11 +40,7 @@ export function NotificationsPage() {
     if (!token) return;
     try {
       await notificationsApi.markRead(token, [id]);
-      setList(
-        list.map((n) =>
-          n.id === id ? { ...n, read: true, isRead: true } : n
-        )
-      );
+      markReadOptimistic([id]);
     } catch (e) {
       toast.error(
         e instanceof ApiClientError ? e.message : "تعذّر تحديث الإشعار"

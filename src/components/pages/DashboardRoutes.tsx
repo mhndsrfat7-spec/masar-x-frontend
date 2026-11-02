@@ -9,6 +9,10 @@ import { CreateShipmentPage } from "@/components/pages/CreateShipmentPage";
 import { WalletPage } from "@/components/pages/WalletPage";
 import { CustomersPage } from "@/components/pages/CustomersPage";
 import { AddressBookPage } from "@/components/pages/AddressBookPage";
+import { AddressLookupPage } from "@/components/pages/AddressLookupPage";
+import { WeightDisputesPage } from "@/components/pages/WeightDisputesPage";
+import { CarrierCapabilitiesPage } from "@/components/pages/CarrierCapabilitiesPage";
+import { IntegrationsPage } from "@/components/pages/IntegrationsPage";
 import { InvoicesPage } from "@/components/pages/InvoicesPage";
 import { TrackingPage } from "@/components/pages/TrackingPage";
 import { NotificationsPage } from "@/components/pages/NotificationsPage";
@@ -42,6 +46,14 @@ function RouteRenderer({ route }: { route: string }) {
       return <WalletPage />;
     case "address-book":
       return <AddressBookPage />;
+    case "address-lookup":
+      return <AddressLookupPage />;
+    case "weight-disputes":
+      return <WeightDisputesPage />;
+    case "carriers":
+      return <CarrierCapabilitiesPage />;
+    case "integrations":
+      return <IntegrationsPage />;
     case "customers":
       return <CustomersPage />;
     case "invoices":

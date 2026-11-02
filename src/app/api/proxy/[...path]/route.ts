@@ -6,8 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
  * This bypasses browser CORS and keeps the backend base URL server-side.
  */
 
-const BACKEND_URL =
-  process.env.BACKEND_URL || "http://185.211.5.19:8081";
+const BACKEND_URL = process.env.BACKEND_URL?.trim();
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -26,8 +25,31 @@ async function handler(
     );
   }
 
+  if (!BACKEND_URL) {
+    return NextResponse.json(
+      { ok: false, error: "backend_not_configured", message: "BACKEND_URL غير مضبوط على الخادم" },
+      { status: 503 }
+    );
+  }
+
+  let backendBase: URL;
+  try {
+    backendBase = new URL(BACKEND_URL);
+  } catch {
+    return NextResponse.json(
+      { ok: false, error: "invalid_backend_url" },
+      { status: 500 }
+    );
+  }
+  if (process.env.NODE_ENV === "production" && backendBase.protocol !== "https:") {
+    return NextResponse.json(
+      { ok: false, error: "https_required", message: "يجب استخدام HTTPS مع بيئة الإنتاج" },
+      { status: 500 }
+    );
+  }
+
   const url = new URL(req.url);
-  const target = new URL(`${BACKEND_URL}/${path}${url.search}`);
+  const target = new URL(`${backendBase.toString().replace(/\/$/, "")}/${path}${url.search}`);
 
   const headers = new Headers();
   const skip = new Set([

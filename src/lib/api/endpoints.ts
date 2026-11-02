@@ -7,6 +7,10 @@ export const Endpoints = {
   auth: {
     otpRequest: "/auth/otp/request",
     otpVerify: "/auth/otp/verify",
+    passwordLogin: "/auth/login",
+    forgotPassword: "/auth/forgot-password",
+    resetPassword: "/auth/reset-password",
+    changePassword: "/auth/change-password",
     refresh: "/auth/refresh",
     logout: "/auth/logout",
     me: "/auth/me",
@@ -21,6 +25,8 @@ export const Endpoints = {
     quote: "/public/quote",
     cities: "/public/cities",
     carriersActive: "/public/carriers/active",
+    carrierCapabilities: (code: string) =>
+      `/public/carriers/${encodeURIComponent(code)}/capabilities`,
     track: (trackingNumber: string) =>
       `/public/track/${encodeURIComponent(trackingNumber)}`,
   },
@@ -35,10 +41,28 @@ export const Endpoints = {
     labelFile: (id: string) => `/shipments/${encodeURIComponent(id)}/label-file`,
     cancel: (id: string) => `/shipments/${encodeURIComponent(id)}/cancel`,
   },
+  // Proposed backend additions documented in BACKEND_HANDOFF_AR.md.
   customers: {
     list: "/customers",
     create: "/customers",
+    lookupByCode: "/customers/lookup-by-code",
     details: (id: string) => `/customers/${encodeURIComponent(id)}`,
+  },
+  // Proposed backend additions: customer weight-dispute lifecycle.
+  weightDisputes: {
+    list: "/weight-disputes",
+    createForShipment: (shipmentId: string) =>
+      `/shipments/${encodeURIComponent(shipmentId)}/weight-disputes`,
+    details: (id: string) => `/weight-disputes/${encodeURIComponent(id)}`,
+    attachments: (id: string) => `/weight-disputes/${encodeURIComponent(id)}/attachments`,
+  },
+  // Proposed backend additions: admin-only integration health and connection flow.
+  integrations: {
+    overview: "/integrations",
+    events: "/integrations/events",
+    eventDetails: (id: string) => `/integrations/events/${encodeURIComponent(id)}`,
+    whatsappConnect: "/integrations/whatsapp/connect",
+    whatsappDisconnect: "/integrations/whatsapp/disconnect",
   },
   stores: {
     me: "/stores/me",

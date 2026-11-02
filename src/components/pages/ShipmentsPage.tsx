@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { toast } from "sonner";
 import { Plus, Search, Filter, Download } from "lucide-react";
 import { useRouterStore } from "@/store/routerStore";
 import { useAuth } from "@/hooks/useAuth";
 import { useShipments } from "@/hooks/useShipments";
+import { useDebouncedValue, usePagination } from "@/hooks/useDebounce";
 import { PageHeader } from "@/components/common/PageHeader";
 import {
   LoadingState,
@@ -50,21 +52,71 @@ export function ShipmentsPage() {
 
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<string>("all");
+  const [carrier, setCarrier] = useState<string>("all");
+
+  const debouncedQ = useDebouncedValue(q, 250);
+
+  const carrierOptions = useMemo(() => {
+    const values = list
+      .map((s) => s.carrierNameAr ?? s.carrierName ?? s.carrier ?? s.carrierCode ?? "")
+      .map((value) => value.trim())
+      .filter(Boolean);
+    return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b, "ar"));
+  }, [list]);
 
   const filtered = useMemo(() => {
     return list.filter((s) => {
       const matchesQ =
-        !q ||
-        (s.trackingNumber ?? "").toLowerCase().includes(q.toLowerCase()) ||
-        (s.receiverName ?? "").toLowerCase().includes(q.toLowerCase()) ||
-        (s.receiverCity ?? "").toLowerCase().includes(q.toLowerCase()) ||
-        (s.senderCity ?? "").toLowerCase().includes(q.toLowerCase());
+        !debouncedQ ||
+        (s.trackingNumber ?? "").toLowerCase().includes(debouncedQ.toLowerCase()) ||
+        (s.receiverName ?? "").toLowerCase().includes(debouncedQ.toLowerCase()) ||
+        (s.receiverPhone ?? "").toLowerCase().includes(debouncedQ.toLowerCase()) ||
+        (s.receiverCity ?? "").toLowerCase().includes(debouncedQ.toLowerCase()) ||
+        (s.senderCity ?? "").toLowerCase().includes(debouncedQ.toLowerCase());
       const matchesStatus =
         status === "all" ||
         String(s.status).toUpperCase() === status;
-      return matchesQ && matchesStatus;
+      const shipmentCarrier = (s.carrierNameAr ?? s.carrierName ?? s.carrier ?? s.carrierCode ?? "").trim();
+      const matchesCarrier = carrier === "all" || shipmentCarrier === carrier;
+      return matchesQ && matchesStatus && matchesCarrier;
     });
-  }, [list, q, status]);
+  }, [list, debouncedQ, status, carrier]);
+
+  const { paginated, page, totalPages, hasNext, hasPrev, nextPage, prevPage, setPage } = usePagination(filtered, 20);
+
+  const handleExport = () => {
+    if (filtered.length === 0) {
+      toast.info("لا توجد شحنات مطابقة للتصدير");
+      return;
+    }
+    const csvCell = (value: unknown) =>
+      `"${String(value ?? "").replace(/"/g, '""')}"`;
+    const rows = [
+      ["رقم التتبع", "شركة الشحن", "اسم المستلم", "جوال المستلم", "مدينة الإرسال", "مدينة الاستلام", "الحالة", "المبلغ (ر.س)", "تاريخ الإنشاء"],
+      ...filtered.map((s) => [
+        s.trackingNumber ?? s.id,
+        s.carrierNameAr ?? s.carrierName ?? s.carrier ?? s.carrierCode ?? "",
+        s.receiverName ?? "",
+        s.receiverPhone ?? "",
+        s.senderCity ?? "",
+        s.receiverCity ?? "",
+        s.status ?? "",
+        s.totalHal != null ? halToSar(s.totalHal) : s.price ?? 0,
+        s.createdAt ?? "",
+      ]),
+    ];
+    const csv = `\uFEFF${rows.map((row) => row.map(csvCell).join(",")).join("\r\n")}`;
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `masarx-shipments-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+    toast.success(`تم تصدير ${filtered.length} شحنة`);
+  };
 
   return (
     <div className="space-y-6">
@@ -73,7 +125,7 @@ export function ShipmentsPage() {
         description="إدارة وتتبّع جميع شحناتك في مكان واحد."
         action={
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="gap-1.5">
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={handleExport}>
               <Download className="h-4 w-4" />
               تصدير
             </Button>
@@ -113,6 +165,19 @@ export function ShipmentsPage() {
               ))}
             </SelectContent>
           </Select>
+          <Select value={carrier} onValueChange={setCarrier}>
+            <SelectTrigger className="sm:w-48">
+              <SelectValue placeholder="كل شركات الشحن" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">كل شركات الشحن</SelectItem>
+              {carrierOptions.map((name) => (
+                <SelectItem key={name} value={name}>
+                  {name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </CardContent>
       </Card>
 
@@ -125,10 +190,10 @@ export function ShipmentsPage() {
           ) : filtered.length === 0 ? (
             <EmptyState
               title={
-                q || status !== "all" ? "لا توجد نتائج مطابقة" : "لا توجد شحنات بعد"
+              q || status !== "all" || carrier !== "all" ? "لا توجد نتائج مطابقة" : "لا توجد شحنات بعد"
               }
               description={
-                q || status !== "all"
+                q || status !== "all" || carrier !== "all"
                   ? "جرّب تعديل البحث أو الفلتر."
                   : "ابدأ بإنشاء شحنتك الأولى."
               }
@@ -161,7 +226,7 @@ export function ShipmentsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filtered.map((s) => {
+                    {paginated.map((s) => {
                       const price = s.totalHal
                         ? halToSar(s.totalHal)
                         : s.price ?? 0;
@@ -217,7 +282,7 @@ export function ShipmentsPage() {
               </div>
 
               <div className="md:hidden divide-y divide-border">
-                {filtered.map((s) => {
+                {paginated.map((s) => {
                   const price = s.totalHal
                     ? halToSar(s.totalHal)
                     : s.price ?? 0;
@@ -259,6 +324,30 @@ export function ShipmentsPage() {
                   );
                 })}
               </div>
+
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-3 py-4 border-t border-border">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={prevPage}
+                    disabled={!hasPrev}
+                  >
+                    السابق
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    صفحة {page} من {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={nextPage}
+                    disabled={!hasNext}
+                  >
+                    التالي
+                  </Button>
+                </div>
+              )}
             </>
           )}
         </CardContent>

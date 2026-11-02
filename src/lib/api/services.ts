@@ -5,11 +5,27 @@ import type {
   AccountType,
   AuthSession,
   Carrier,
+  CarrierCapabilityResponse,
+  CreateWeightDisputeRequest,
+  CreateShipmentRequest,
+  IntegrationEvent,
+  IntegrationEventDetails,
+  IntegrationEventListResponse,
+  IntegrationsOverview,
+  ShortCodeLookupResult,
+  WeightDispute,
+  WeightDisputeListResponse,
+  WhatsAppConnectResponse,
   City,
   Customer,
   Invoice,
   NotificationItem,
   PaymentMode,
+  PasswordActionResponse,
+  PasswordChangeRequest,
+  PasswordLoginRequest,
+  PasswordRecoveryRequest,
+  PasswordResetRequest,
   QuoteRequest,
   QuoteResponse,
   QuoteResult,
@@ -48,20 +64,32 @@ export function isDemoMode(): boolean {
 }
 
 /** ===== AUTH =====
- *
- * Backend uses OTP-only flow for merchants:
- *  1. POST /auth/otp/request { phone, accountType: "MERCHANT"|"INDIVIDUAL" } → { expiresInSec }
- *  2. POST /auth/otp/verify  { phone, code, accountType } → { accessToken, user, ... }
- *
- * NOTE: The backend currently does NOT expose a password login endpoint
- * for merchants. The UI presents a "password" field to match the brand
- * reference images — in real mode it is currently stored client-side
- * only (used for the local signup form). When a real password-login
- * endpoint is added to the backend, swap verifyOtp() for a direct
- * password call. See BACKEND_NOTES.md.
+ * OTP endpoints already exist. Password login / recovery / change are new
+ * backend contracts documented in BACKEND_HANDOFF_AR.md. The UI falls back
+ * to the established OTP flow only when password login is not deployed.
  */
 
 export const authApi = {
+  login: (payload: PasswordLoginRequest) =>
+    isDemoMode()
+      ? mockApi.auth.login(payload)
+      : apiClient.post<AuthSession>(Endpoints.auth.passwordLogin, payload),
+
+  forgotPassword: (payload: PasswordRecoveryRequest) =>
+    isDemoMode()
+      ? mockApi.auth.forgotPassword(payload)
+      : apiClient.post<PasswordActionResponse>(Endpoints.auth.forgotPassword, payload),
+
+  resetPassword: (payload: PasswordResetRequest) =>
+    isDemoMode()
+      ? mockApi.auth.resetPassword(payload)
+      : apiClient.post<PasswordActionResponse>(Endpoints.auth.resetPassword, payload),
+
+  changePassword: (token: string, payload: PasswordChangeRequest) =>
+    isDemoMode()
+      ? mockApi.auth.changePassword(payload)
+      : apiClient.post<PasswordActionResponse>(Endpoints.auth.changePassword, payload, withToken(token)),
+
   requestOtp: (phone: string, accountType: AccountType = "MERCHANT") =>
     isDemoMode()
       ? mockApi.auth.requestOtp(phone, accountType)
@@ -165,9 +193,9 @@ export const shipmentsApi = {
       ? mockApi.shipments.details(token, id)
       : apiClient.get<Shipment>(Endpoints.shipments.details(id), withToken(token)),
 
-  create: (token: string, payload: Record<string, unknown>) =>
+  create: (token: string, payload: CreateShipmentRequest) =>
     isDemoMode()
-      ? mockApi.shipments.create(token, payload as Partial<Shipment> & Record<string, unknown>)
+      ? mockApi.shipments.create(token, payload)
       : apiClient.post<Shipment>(Endpoints.shipments.create, payload, withToken(token)),
 
   confirm: (token: string, id: string, payload?: Record<string, unknown>) =>
@@ -287,6 +315,69 @@ export const walletApi = {
     isDemoMode()
       ? mockApi.wallet.codSummary()
       : apiClient.get<Record<string, unknown>>(Endpoints.wallet.codSummary, withToken(token)),
+
+  /** Withdraw available balance / COD to a saved bank account. */
+  withdraw: (token: string, req: { amount: number; amountHal?: number; bankAccountId: string; note?: string }) =>
+    isDemoMode()
+      ? mockApi.wallet.withdraw(token, req)
+      : apiClient.post<{ ok: boolean; transactionId: string; status: string }>(
+          "/wallet/withdraw",
+          req,
+          withToken(token)
+        ),
+};
+
+/** ===== SAVED BANK ACCOUNTS — managed on the user profile =====
+ *  Lets merchants save multiple IBANs and reuse them for bank-transfer topups
+ *  and COD/balance withdrawals. In demo: stored on mockUser.savedBankAccounts.
+ *  In real: stored server-side per user (POST /bank-accounts CRUD). */
+
+export interface SavedBankAccount {
+  id: string;
+  label: string;
+  accountHolderName: string;
+  bankName: string;
+  iban: string;
+  isDefault: boolean;
+  createdAt: string;
+}
+
+export const bankAccountsApi = {
+  list: (token: string) =>
+    isDemoMode()
+      ? mockApi.bankAccounts.list()
+      : apiClient.get<SavedBankAccount[]>("/bank-accounts", withToken(token)),
+
+  create: (token: string, payload: Omit<SavedBankAccount, "id" | "createdAt">) =>
+    isDemoMode()
+      ? mockApi.bankAccounts.create(payload)
+      : apiClient.post<SavedBankAccount>("/bank-accounts", payload, withToken(token)),
+
+  update: (token: string, id: string, patch: Partial<SavedBankAccount>) =>
+    isDemoMode()
+      ? mockApi.bankAccounts.update(id, patch)
+      : apiClient.patch<SavedBankAccount>(
+          `/bank-accounts/${encodeURIComponent(id)}`,
+          patch,
+          withToken(token)
+        ),
+
+  delete: (token: string, id: string) =>
+    isDemoMode()
+      ? mockApi.bankAccounts.delete(id)
+      : apiClient.delete<{ ok: boolean }>(
+          `/bank-accounts/${encodeURIComponent(id)}`,
+          withToken(token)
+        ),
+};
+
+/** Verify the user's password (for sensitive confirmations like withdrawals,
+ *  bank-account edits, topup confirmation) without re-submitting bank details. */
+export const securityApi = {
+  verifyPassword: (token: string, password: string) =>
+    isDemoMode()
+      ? mockApi.verifyPassword(token, password)
+      : apiClient.post<{ ok: boolean }>("/auth/verify-password", { password }, withToken(token)),
 };
 
 /** ===== INVOICES ===== */
@@ -332,15 +423,174 @@ export const notificationsApi = {
         ),
 };
 
+/** ===== ADDRESS RESOLUTION ===== */
+
+export const addressLookupApi = {
+  lookup: (token: string, code: string) =>
+    isDemoMode()
+      ? mockApi.customers.lookupByCode(code)
+      : apiClient.get<ShortCodeLookupResult>(Endpoints.customers.lookupByCode, {
+          ...withToken(token),
+          query: { code: code.trim().toUpperCase() },
+        }),
+};
+
+/** ===== WEIGHT DISPUTES ===== */
+
+export const weightDisputesApi = {
+  list: (token: string, query?: Record<string, string | number>) =>
+    isDemoMode()
+      ? mockApi.weightDisputes.list(query)
+      : apiClient.get<WeightDisputeListResponse | WeightDispute[]>(
+          Endpoints.weightDisputes.list,
+          { ...withToken(token), query }
+        ),
+
+  create: (token: string, shipmentId: string, payload: CreateWeightDisputeRequest) =>
+    isDemoMode()
+      ? mockApi.weightDisputes.create(shipmentId, payload)
+      : apiClient.post<WeightDispute>(
+          Endpoints.weightDisputes.createForShipment(shipmentId),
+          payload,
+          withToken(token)
+        ),
+
+  details: (token: string, id: string) =>
+    isDemoMode()
+      ? mockApi.weightDisputes.details(id)
+      : apiClient.get<WeightDispute>(Endpoints.weightDisputes.details(id), withToken(token)),
+
+  attach: (token: string, id: string, upload: UploadedFileReceipt) =>
+    isDemoMode()
+      ? mockApi.weightDisputes.attach(id, upload)
+      : apiClient.post<WeightDisputeAttachmentReceipt>(
+          Endpoints.weightDisputes.attachments(id),
+          upload,
+          withToken(token)
+        ),
+};
+
+/** ===== CARRIER CAPABILITIES ===== */
+
+export const carrierCapabilitiesApi = {
+  get: (code: string) =>
+    isDemoMode()
+      ? mockApi.public.carrierCapabilities(code)
+      : apiClient.get<CarrierCapabilityResponse>(Endpoints.public.carrierCapabilities(code)),
+};
+
+/** ===== INTEGRATIONS & DELIVERY EVENTS ===== */
+
+export const integrationsApi = {
+  overview: (token: string) =>
+    isDemoMode()
+      ? mockApi.integrations.overview()
+      : apiClient.get<IntegrationsOverview>(Endpoints.integrations.overview, withToken(token)),
+
+  events: (token: string, query?: Record<string, string | number>) =>
+    isDemoMode()
+      ? mockApi.integrations.events(query)
+      : apiClient.get<IntegrationEventListResponse | IntegrationEvent[]>(
+          Endpoints.integrations.events,
+          { ...withToken(token), query }
+        ),
+
+  eventDetails: (token: string, id: string) =>
+    isDemoMode()
+      ? mockApi.integrations.eventDetails(id)
+      : apiClient.get<IntegrationEventDetails>(
+          Endpoints.integrations.eventDetails(id),
+          withToken(token)
+        ),
+
+  connectWhatsApp: (token: string) =>
+    isDemoMode()
+      ? Promise.reject(new Error("ربط واتساب الحقيقي غير متاح في وضع التجربة"))
+      : apiClient.post<WhatsAppConnectResponse>(
+          Endpoints.integrations.whatsappConnect,
+          {},
+          withToken(token)
+        ),
+
+  disconnectWhatsApp: (token: string) =>
+    isDemoMode()
+      ? Promise.reject(new Error("إدارة اتصال واتساب الحقيقي غير متاحة في وضع التجربة"))
+      : apiClient.post<{ ok: boolean }>(
+          Endpoints.integrations.whatsappDisconnect,
+          {},
+          withToken(token)
+        ),
+};
+
 /** ===== UPLOADS ===== */
+
+export interface UploadedFileReceipt {
+  fileId: string;
+  storageKey: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+}
+
+export interface WeightDisputeAttachmentReceipt extends UploadedFileReceipt {
+  id?: string;
+  downloadUrl?: string;
+}
 
 export const uploadsApi = {
   presign: (token: string, payload: Record<string, unknown>) =>
-    apiClient.post<{ url?: string; fields?: Record<string, string> }>(
+    apiClient.post<import("@/types/api").PresignedUploadResponse>(
       Endpoints.uploads.presign,
       payload,
       withToken(token)
     ),
+
+  uploadWeightEvidence: async (
+    token: string,
+    disputeId: string,
+    file: File
+  ): Promise<UploadedFileReceipt> => {
+    if (isDemoMode()) {
+      return {
+        fileId: `demo-file-${Date.now()}`,
+        storageKey: `demo/weight-disputes/${disputeId}/${file.name}`,
+        fileName: file.name,
+        mimeType: file.type || "application/octet-stream",
+        sizeBytes: file.size,
+      };
+    }
+
+    const signed = await uploadsApi.presign(token, {
+      purpose: "WEIGHT_DISPUTE_EVIDENCE",
+      resourceType: "WEIGHT_DISPUTE",
+      resourceId: disputeId,
+      fileName: file.name,
+      mimeType: file.type,
+      sizeBytes: file.size,
+    });
+
+    const uploadUrl = new URL(signed.uploadUrl);
+    if (uploadUrl.protocol !== "https:") {
+      throw new Error("رابط رفع الملف يجب أن يستخدم HTTPS");
+    }
+
+    const response = await fetch(uploadUrl.toString(), {
+      method: signed.method,
+      headers: signed.headers,
+      body: file,
+    });
+    if (!response.ok) {
+      throw new Error(`فشل رفع المرفق (HTTP ${response.status})`);
+    }
+
+    return {
+      fileId: signed.fileId,
+      storageKey: signed.storageKey,
+      fileName: file.name,
+      mimeType: file.type || "application/octet-stream",
+      sizeBytes: file.size,
+    };
+  },
 };
 
 /** Export PaymentMode for forms */

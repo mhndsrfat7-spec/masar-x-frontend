@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, User } from "lucide-react";
+import { Building2, User, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { UiAccountType } from "@/hooks/useAuth";
 
@@ -8,17 +8,112 @@ interface AccountTypeToggleProps {
   value: UiAccountType;
   onChange: (v: UiAccountType) => void;
   className?: string;
+  /**
+   * "segmented" (default) — pill-shaped segmented control, compact.
+   * "cards" — two large side-by-side cards with descriptions, used on
+   *   register page and on the login phone-input screen per brand reference.
+   */
+  variant?: "segmented" | "cards";
 }
 
 /**
- * Visual toggle between Merchant (تاجر) and Customer (عميل) accounts.
- * Matches the brand reference: 2 cards with icons + check badge on the active one.
+ * Toggle between Merchant (تاجر) and Customer (عميل) account types.
+ *
+ * Two visual variants:
+ *  - "segmented": pill control — used in login form (compact).
+ *  - "cards": two large cards with check badge — used in register form
+ *    and matches the brand reference (images 2 & 4).
  */
 export function AccountTypeToggle({
   value,
   onChange,
   className,
+  variant = "segmented",
 }: AccountTypeToggleProps) {
+  if (variant === "cards") {
+    return <CardsVariant value={value} onChange={onChange} className={className} />;
+  }
+  return <SegmentedVariant value={value} onChange={onChange} className={className} />;
+}
+
+/* ============================= Segmented ============================= */
+function SegmentedVariant({
+  value,
+  onChange,
+  className,
+}: {
+  value: UiAccountType;
+  onChange: (v: UiAccountType) => void;
+  className?: string;
+}) {
+  const options: {
+    value: UiAccountType;
+    label: string;
+    icon: React.ReactNode;
+  }[] = [
+    {
+      value: "merchant",
+      label: "حساب تاجر",
+      icon: <Building2 className="h-4 w-4" />,
+    },
+    {
+      value: "customer",
+      label: "حساب عميل",
+      icon: <User className="h-4 w-4" />,
+    },
+  ];
+
+  return (
+    <div
+      className={cn(
+        "relative grid grid-cols-2 gap-1 rounded-full bg-muted p-1",
+        className
+      )}
+      role="tablist"
+    >
+      {options.map((opt) => {
+        const active = value === opt.value;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(opt.value)}
+            className={cn(
+              "relative flex items-center justify-center gap-2 rounded-full py-2.5 text-sm font-semibold transition-all",
+              active
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <span className={cn(active ? "text-primary-foreground" : "text-muted-foreground")}>
+              {opt.icon}
+            </span>
+            <span>{opt.label}</span>
+            {active && (
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse-soft" />
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* =============================== Cards ===============================
+ * Matches brand reference: two large cards, active one with green border
+ * (#689F38) + soft green background (#EFF5EA) + circular check badge.
+ * ==================================================================== */
+function CardsVariant({
+  value,
+  onChange,
+  className,
+}: {
+  value: UiAccountType;
+  onChange: (v: UiAccountType) => void;
+  className?: string;
+}) {
   const options: {
     value: UiAccountType;
     label: string;
@@ -28,76 +123,74 @@ export function AccountTypeToggle({
     {
       value: "merchant",
       label: "حساب تاجر",
-      desc: "متجر / نشاط تجاري",
-      icon: <Building2 className="h-4 w-4" />,
+      desc: "لإدارة شحنات متجرك",
+      icon: <Building2 className="h-6 w-6" />,
     },
     {
       value: "customer",
       label: "حساب عميل",
-      desc: "فرد / مستلم",
-      icon: <User className="h-4 w-4" />,
+      desc: "لإرسال واستقبال الشحنات",
+      icon: <User className="h-6 w-6" />,
     },
   ];
 
   return (
-    <div className={cn("grid grid-cols-2 gap-3", className)}>
+    <div className={cn("grid grid-cols-2 gap-3", className)} role="tablist">
       {options.map((opt) => {
         const active = value === opt.value;
         return (
           <button
             key={opt.value}
             type="button"
+            role="tab"
+            aria-selected={active}
             onClick={() => onChange(opt.value)}
             className={cn(
-              "group relative flex items-center gap-3 rounded-xl border-2 p-3 text-right transition-all",
+              "group relative flex flex-col items-center gap-2 rounded-2xl border-2 p-5 text-center transition-all",
               active
-                ? "border-primary bg-primary/5 shadow-sm"
-                : "border-border bg-card hover:border-primary/30 hover:bg-muted/40"
+                ? "shadow-sm"
+                : "border-border bg-card hover:border-[#689F38]/40 hover:bg-muted/30"
             )}
-            aria-pressed={active}
+            style={
+              active
+                ? {
+                    borderColor: "#689F38",
+                    backgroundColor: "#EFF5EA",
+                  }
+                : undefined
+            }
           >
+            {/* Circular check badge (top-left in RTL = top-right visual) */}
+            {active && (
+              <span
+                className="absolute top-2.5 left-2.5 flex h-5 w-5 items-center justify-center rounded-full text-white shadow-sm"
+                style={{ backgroundColor: "#689F38" }}
+              >
+                <Check className="h-3 w-3" strokeWidth={3} />
+              </span>
+            )}
+
             <div
               className={cn(
-                "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-colors",
-                active
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground group-hover:bg-primary/10"
+                "flex h-12 w-12 items-center justify-center rounded-xl transition-colors",
+                active ? "text-white" : "bg-muted text-muted-foreground group-hover:bg-primary/10"
               )}
+              style={active ? { backgroundColor: "#689F38" } : undefined}
             >
               {opt.icon}
             </div>
-            <div className="flex-1 min-w-0">
+
+            <div className="space-y-0.5">
               <p
                 className={cn(
-                  "text-sm font-semibold truncate",
-                  active ? "text-primary" : "text-foreground"
+                  "text-sm font-bold",
+                  active ? "text-[#0F352E]" : "text-foreground"
                 )}
               >
                 {opt.label}
               </p>
-              <p className="text-[11px] text-muted-foreground truncate">
-                {opt.desc}
-              </p>
+              <p className="text-[11px] text-muted-foreground">{opt.desc}</p>
             </div>
-            {active && (
-              <span className="absolute top-2 left-2 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                <svg
-                  width="10"
-                  height="10"
-                  viewBox="0 0 10 10"
-                  fill="none"
-                  aria-hidden
-                >
-                  <path
-                    d="M2 5L4.5 7.5L8.5 2.5"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </span>
-            )}
           </button>
         );
       })}

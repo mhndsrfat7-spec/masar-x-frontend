@@ -2,13 +2,13 @@
 
 > منصة شحن سعودية موحدة — واجهة أمامية احترافية بـ Next.js 16 + TypeScript + Tailwind CSS 4 + shadcn/ui.
 
-[![Status](https://img.shields.io/badge/Status-Production%20Ready-success)]()
+[![Status](https://img.shields.io/badge/Status-MVP%20%2F%20Integration%20Pending-yellow)]()
 [![RTL](https://img.shields.io/badge/RTL-100%25-brightgreen)]()
 [![Responsive](https://img.shields.io/badge/Responsive-Mobile%20First-blue)]()
-[![API](https://img.shields.io/badge/API-83%20Endpoints-orange)]()
+[![API](https://img.shields.io/badge/API-Proxy%20%2B%20Service%20Layer-orange)]()
 
 تم بناء هذا المشروع بالاعتماد الكامل على:
-- **OpenAPI 3.1 spec** من الباك إند (`http://185.211.5.19:8081/api/v1/openapi.json`)
+- **OpenAPI 3.1 spec** من الباك إند (`https://YOUR_BACKEND_DOMAIN/api/v1/openapi.json`)
 - **الهوية البصرية المرفقة** (شعار M الأخضر + خلفية كريمية + شعار "شحنك أدق، وأعمالك أسرع")
 
 ---
@@ -19,77 +19,61 @@
 - [Bun](https://bun.sh) (موصى به) أو Node.js 18+
 - npm أو bun
 
-### الطريقة 1: عبر الباك إند الحقيقي (الوضع الافتراضي)
+### التشغيل المحلي بالبيانات التجريبية
 
 ```bash
-# 1. فك ضغط المشروع
-unzip masar-x-frontend.zip
+# 1. فك ضغط المشروع ثم ادخل مجلده
 cd masar-x-frontend
 
-# 2. تثبيت الاعتمادات
-bun install        # أو: npm install
+# 2. انسخ قالب البيئة (PowerShell: Copy-Item .env.example .env)
+cp .env.example .env
 
-# 3. التشغيل (ملف .env مُعد مسبقاً للوضع الحقيقي)
-bun run dev        # أو: npm run dev
+# 3. تثبيت الاعتمادات والتشغيل
+npm install
+npm run dev
 
-# 4. افتح المتصفح على
-#    http://localhost:3000
+# 4. افتح http://localhost:3000
+#    رمز OTP التجريبي: 1234
 ```
 
-> عند الوضع الحقيقي، استخدم رقم جوال سعودي حقيقي + رمز OTP الذي يصلك عبر WhatsApp.
+الوضع الافتراضي في `.env.example` هو `demo`، وتُقرأ البيانات التجريبية من
+`src/lib/api/mock/data.ts` دون اتصال بالخادم الحقيقي.
 
-### الطريقة 2: بالبيانات الوهمية (Demo Mode)
+### التوصيل بالباك إند الحقيقي
 
-```bash
-# 1. نسخ ملف البيئة التجريبي
-cp .env.demo .env
+بعد تجهيز خادم API وشهادات TLS:
 
-# 2. التشغيل
-bun run dev
-
-# 3. افتح http://localhost:3000
-#    • أدخل أي رقم جوال سعودي (مثال: 519999999)
-#    • اضغط "إرسال رمز التحقق"
-#    • استخدم الرمز: 1234
+```env
+NEXT_PUBLIC_API_MODE=real
+BACKEND_URL=https://YOUR_BACKEND_DOMAIN
 ```
 
-> في الوضع التجريبي، تظهر شارة "وضع تجريبي" أعلى كل صفحة. كل البيانات تأتي من
-> `src/lib/api/mock/data.ts` محلياً دون أي اتصال بالباك إند.
+يجب أن يشير `BACKEND_URL` إلى خادم HTTPS صالح وأن تكون مسارات OpenAPI ومخططات الطلبات متوافقة. مصادقة المشروع الحالية OTP فقط؛ تسجيل الدخول بكلمة المرور يتطلب إضافة endpoint من الباك إند. لا تضع مفاتيح الناقلين أو الدفع في متغيرات `NEXT_PUBLIC_*`.
 
 ---
 
 ## 🔧 ملفات البيئة
 
-يحتوي المشروع على 3 ملفات بيئة:
-
-| الملف | الوضع | الاستخدام |
-|-------|------|-----------|
-| `.env` | real (افتراضي) | التشغيل عبر الباك إند الحقيقي |
-| `.env.real` | real | قالب للنسخ عند العودة للوضع الحقيقي |
-| `.env.demo` | demo | قالب للنسخ عند التبديل للوضع التجريبي |
-| `.env.example` | — | شرح المتغيرات |
+يحتوي التسليم على `.env.example` فقط. تُنشأ نسخة `.env` محلياً ولا تُرفع إلى Git أو تُشارك؛ لأن ملفات البيئة قد تحتوي عناوين داخلية أو أسرار تشغيل.
 
 ### المتغيرات الرئيسية
 
 ```bash
-# وضع الـ API: "real" (افتراضي) أو "demo"
-NEXT_PUBLIC_API_MODE=real
+# وضع الـ API: "real" أو "demo"
+NEXT_PUBLIC_API_MODE=demo
 
 # عنوان الباك إند (server-side only — لا يُكشف للمتصفح)
-BACKEND_URL=http://185.211.5.19:8081
-
-# قاعدة البيانات المحلية (Prisma + SQLite — غير مستخدمة في الـ frontend)
-DATABASE_URL=file:/home/z/my-project/db/custom.db
+BACKEND_URL=https://YOUR_BACKEND_DOMAIN
 ```
 
 ### التبديل بين الوضعين
 
 ```bash
-# للوضع الحقيقي:
-cp .env.real .env && bun run dev
+# للوضع الحقيقي: عدّل قيم .env إلى real ورابط HTTPS الخاص بخادمك
+npm run dev
 
 # للوضع التجريبي:
-cp .env.demo .env && bun run dev
+# NEXT_PUBLIC_API_MODE=demo في .env ثم أعد تشغيل الخادم
 ```
 
 > ⚡ لا حاجة لإعادة تثبيت الاعتمادات عند التبديل — يكفي تعديل `.env` وإعادة تشغيل الخادم.
@@ -99,8 +83,8 @@ cp .env.demo .env && bun run dev
 ## 📊 نظرة عامة
 
 ### الإحصائيات
-- **12 صفحة** مستقلة (لكل صفحة مكوّن منفصل)
-- **83 نقطة نهاية API** موزعة على 12 وحدة (Auth, Shipments, Wallet, ...)
+- **17 شاشة/صفحة**: 15 مسارًا داخل التطبيق + تسجيل الدخول والتسجيل
+- مسارات API وخدمات للوظائف الأساسية؛ وجود المسار في الكود لا يعني أن الخدمة الخارجية اختُبرت أو فُعّلت في بيئة الإنتاج.
 - **وضعان للتشغيل**: حقيقي + تجريبي
 - **100% RTL** + خط Cairo العربي
 - **Mobile-first** مع responsive كامل
@@ -109,19 +93,23 @@ cp .env.demo .env && bun run dev
 
 | # | الصفحة | الوصف |
 |---|--------|------|
-| 1 | Login | تسجيل دخول OTP + تبديل تاجر/عميل |
-| 2 | Register | إنشاء حساب + OTP + خيار Google |
+| 1 | Login | تسجيل الدخول بكلمة المرور أو OTP عند عدم توفر المسار الجديد |
+| 2 | Register | إنشاء حساب + OTP |
 | 3 | Dashboard | لوحة تحكم مع إحصائيات + Quick Actions |
 | 4 | Shipments | قائمة الشحنات + بحث + فلترة |
 | 5 | Shipment Details | تفاصيل شحنة + سجل زمني + إجراءات |
-| 6 | Create Shipment | نموذج إنشاء شحنة + تسعير فوري |
+| 6 | Create Shipment | إنشاء شحنة + تسعير فوري + حقول ناقل ديناميكية |
 | 7 | Wallet | محفظة + معاملات + شحن المحفظة |
-| 8 | Customers | دفتر عملاء + إضافة/حذف |
-| 9 | Invoices | فواتير ZATCA + PDF |
-| 10 | Tracking | تتبّع شحنة (بدون مصادقة) |
-| 11 | Notifications | إشعارات + تعليم كمقروء |
-| 12 | Profile | ملف شخصي + بيانات المتجر |
-
+| 8 | Address Book | إدارة المرسلين والمستلمين |
+| 9 | Address Lookup | البحث بالعنوان المختصر / رمز جهة الاتصال |
+| 10 | Weight Disputes | اعتراضات الوزن والأبعاد ورفع الأدلة |
+| 11 | Carrier Capabilities | قدرات الناقل والحقول الإضافية الديناميكية |
+| 12 | Integrations | حالة التكاملات وسجل Webhooks (للمسؤول فقط) |
+| 13 | Customers | إدارة جهات الاتصال |
+| 14 | Invoices | الفواتير + PDF |
+| 15 | Tracking | تتبّع الشحنة |
+| 16 | Notifications | الإشعارات + تعليم كمقروء |
+| 17 | Profile | الملف الشخصي + بيانات المتجر + تغيير كلمة المرور |
 ---
 
 ## 🎨 الهوية البصرية
@@ -149,7 +137,7 @@ cp .env.demo .env && bun run dev
   ↓ fetch (relative URL)
 Next.js Server (/api/proxy/*)
   ↓ server-to-server (BACKEND_URL)
-Masar X Backend (185.211.5.19:8081)
+Masar X Backend (YOUR_BACKEND_DOMAIN)
 ```
 
 ### الـ API Proxy
@@ -170,7 +158,7 @@ Masar X Backend (185.211.5.19:8081)
 
 ```
 masar-x-frontend/
-├── .env, .env.real, .env.demo    # ملفات البيئة
+├── .env.example                  # قالب بيئة آمن (أنشئ .env محلياً)
 ├── README.md                      # هذا الملف
 ├── package.json
 ├── next.config.ts
@@ -187,7 +175,7 @@ masar-x-frontend/
 │   │   ├── auth/                  # Login + Register + PhoneInput + ...
 │   │   ├── layout/                # DashboardLayout + Sidebar + Topbar
 │   │   ├── dashboard/             # HeroBanner + Stats + QuickActions + Recent*
-│   │   ├── pages/                 # 12 صفحة مستقلة
+│   │   ├── pages/                 # 15 مكوّن صفحة فعلية (تشمل 4 وحدات جديدة)
 │   │   ├── common/                # StateViews + StatusBadge + PageHeader
 │   │   └── ui/                    # shadcn/ui components
 │   ├── hooks/                     # useAuth + useShipments + useWallet + useData
@@ -257,10 +245,9 @@ bun run lint    # فحص ESLint + قواعد Next.js
 
 تم التحقق من:
 - ✅ جميع الصفحات الـ12 (Desktop + Mobile)
-- ✅ الوضع الحقيقي (cities, carriers, OTP)
-- ✅ الوضع التجريبي (login بـ 1234، إنشاء شحنة، شحن محفظة)
-- ✅ ESLint نظيف (0 errors)
-- ✅ React Compiler compatible
+- الوضع الحقيقي يتطلب خادم Backend متاحاً ومتوافقاً وإعداد `BACKEND_URL` عبر HTTPS.
+- الوضع التجريبي يستخدم OTP بقيمة `1234` وبيانات وهمية محلية.
+- لم يُتحقق من بناء الإنتاج في هذه المراجعة بسبب تعذر تثبيت الاعتمادات ضمن بيئة الفحص.
 
 ---
 
@@ -289,7 +276,7 @@ bun run build
 bun run start
 
 # أو عبر Docker (اختياري)
-# تأكد من ضبط BACKEND_URL على عنوان الإنتاج
+# تأكد من ضبط BACKEND_URL على عنوان الإنتاج عبر HTTPS، ولا تستخدم HTTP في الإنتاج
 ```
 
 ---
@@ -302,7 +289,7 @@ bun run start
 
 ### المشكلة: لا تظهر بيانات
 **السبب**: قد يكون الباك إند غير قابل للوصول.
-**الحل**: جرّب الوضع التجريبي: `cp .env.demo .env && bun run dev`
+**الحل**: جرّب الوضع التجريبي: `cp .env.example .env && npm run dev`
 
 ### المشكلة: خطأ CORS
 **السبب**: لا يجب أن يحدث — كل الطلبات تمر عبر `/api/proxy/*`.
@@ -313,10 +300,25 @@ bun run start
 ## 📞 الدعم
 
 للأسئلة أو الدعم التقني، يرجى مراجعة:
-- **التقرير الفني الكامل**: `MasarX-Frontend-Report.pdf`
+- **التقرير الفني للمطابقة والفجوات**: `ANALYSIS_REPORT_AR.md`
 - **لقطات الشاشة**: مجلد `screenshots/`
 - **هيكل الكود**: راجع التعليقات في كل ملف
 
 ---
 
 © 2026 مسار إكس — منصة الشحن السعودية الموحدة
+
+---
+
+## وحدات إضافية وعقود Backend المطلوبة
+
+أضيفت إلى الواجهة صفحات عملية لجلب العنوان المختصر، واعتراضات فروقات الوزن مع رفع الأدلة، واستعراض قدرات الناقل وحقوله الديناميكية، ومركز التكاملات وسجل Webhooks. كما أضيفت واجهات تسجيل الدخول بكلمة المرور، استعادة كلمة المرور، وتغييرها من الملف الشخصي.
+
+**مسارات API المقترحة الجديدة:** 15 route-method combinations موزعة على المصادقة، lookup العناوين، قدرات الناقلين، اعتراضات الوزن، والتكاملات. هذه المسارات معرفة في طبقة خدمات الفرونت وليست إثباتًا على وجود تنفيذ Backend.
+
+راجع الوثائق قبل ربط وضع `real`:
+- `BACKEND_HANDOFF_AR.md` — مواصفات عربية مفصلة لمهندس Backend مع أمثلة الطلب والاستجابة والأمان والأولويات.
+- `docs/backend-api-contract-additions.yaml` — مسودة OpenAPI 3.1 delta للمسارات الجديدة.
+- `BACKEND_NOTES.md` — ملاحظات التكاملات والعقود القائمة التي تحتاج توسيعًا.
+
+المرفقات تعيد استخدام `POST /uploads/presign` الموجود مسبقًا مع إضافة الغرض `WEIGHT_DISPUTE_EVIDENCE`، ولا تحتاج endpoint رفع جديدًا. كذلك لا تُنشأ مسارات منفصلة للمرسلين والمستلمين؛ يكفي توسيع `GET /customers` بفلاتر `type` و`cityId`.

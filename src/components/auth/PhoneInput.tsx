@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Phone } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface PhoneInputProps {
@@ -12,7 +12,7 @@ interface PhoneInputProps {
 }
 
 /**
- * Saudi phone input — fixed +966 prefix with Saudi flag.
+ * Saudi phone input — fixed +966 prefix with Saudi flag + phone icon.
  * The user only types the local number (5XXXXXXXX).
  * Auto-formats as "5 XXXX XXXX" for readability.
  */
@@ -44,19 +44,23 @@ export function PhoneInput({
   return (
     <div
       className={cn(
-        "flex items-stretch rounded-xl border-2 bg-card overflow-hidden transition-colors",
+        "flex items-stretch rounded-xl border bg-card overflow-hidden transition-colors",
         error
-          ? "border-destructive focus-within:border-destructive"
-          : "border-border focus-within:border-primary",
+          ? "border-destructive focus-within:border-destructive focus-within:ring-2 focus-within:ring-destructive/20"
+          : "border-border focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15",
         disabled && "opacity-60",
         className
       )}
       dir="ltr"
     >
+      {/* Phone icon */}
+      <div className="flex items-center px-3 border-l border-border bg-muted/40 text-muted-foreground">
+        <Phone className="h-4 w-4" />
+      </div>
       {/* Saudi flag + code */}
-      <div className="flex items-center gap-2 px-3 border-l-2 border-border bg-muted/50">
-        <SaudiFlag className="h-5 w-7 rounded-sm" />
-        <span className="text-sm font-medium text-foreground" dir="ltr">
+      <div className="flex items-center gap-1.5 px-3 border-l border-border bg-muted/30">
+        <SaudiFlag className="h-4 w-6 rounded-[2px] shadow-sm" />
+        <span className="text-sm font-semibold text-foreground" dir="ltr">
           +966
         </span>
         <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
@@ -71,7 +75,7 @@ export function PhoneInput({
         value={formatLocal(local)}
         onChange={(e) => handleChange(e.target.value)}
         placeholder="5 1999 9999"
-        className="flex-1 bg-transparent px-3 py-3 text-sm font-medium text-foreground outline-none placeholder:text-muted-foreground placeholder:font-normal"
+        className="flex-1 bg-transparent px-3 py-3 text-sm font-medium text-foreground outline-none placeholder:text-muted-foreground/70 placeholder:font-normal"
       />
     </div>
   );

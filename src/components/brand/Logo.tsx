@@ -73,12 +73,12 @@ export function LogoMark({
     >
       <defs>
         <linearGradient id="masar-mark-grad" x1="0" y1="0" x2="48" y2="48">
-          <stop offset="0%" stopColor="#0E3B2E" />
-          <stop offset="100%" stopColor="#082A20" />
+          <stop offset="0%" stopColor="#0D3B3E" />
+          <stop offset="100%" stopColor="#082A2C" />
         </linearGradient>
         <linearGradient id="masar-mint-grad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#7FD1A4" />
-          <stop offset="100%" stopColor="#1F7A4E" />
+          <stop offset="0%" stopColor="#A3D9A5" />
+          <stop offset="100%" stopColor="#10B981" />
         </linearGradient>
       </defs>
       {/* Rounded tile background */}
@@ -111,8 +111,8 @@ export function LogoMark({
         fill="none"
       />
       {/* Small location pin dot at the end of the route */}
-      <circle cx="36" cy="15" r="2" fill="#7FD1A4" />
-      <circle cx="36" cy="15" r="3.5" fill="#7FD1A4" opacity="0.25" />
+      <circle cx="36" cy="15" r="2" fill="#A3D9A5" />
+      <circle cx="36" cy="15" r="3.5" fill="#A3D9A5" opacity="0.25" />
     </svg>
   );
 }
