@@ -145,11 +145,11 @@ export function LanguageSwitcher({
       aria-label={t("common.switchLanguageAria")}
       title={t("common.switchLanguageAria")}
       className={cn(
-        "relative flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full border border-border bg-card px-2.5 sm:px-3 text-xs font-bold text-foreground hover:border-primary/40 hover:bg-muted transition-colors",
+        "relative flex h-8 sm:h-9 shrink-0 items-center justify-center gap-1 sm:gap-1.5 rounded-full border border-border bg-card px-1.5 sm:px-3 text-[10px] sm:text-xs font-bold text-foreground hover:border-primary/40 hover:bg-muted transition-colors",
         className
       )}
     >
-      <Globe className="h-3.5 w-3.5 text-primary shrink-0" />
+      <Globe className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-primary shrink-0" />
       <span className="leading-none">
         {locale === "ar" ? "EN" : "عربي"}
       </span>

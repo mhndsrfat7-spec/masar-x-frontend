@@ -275,19 +275,19 @@ export function Topbar({ title }: TopbarProps) {
       dir={dir}
       className="sticky top-0 z-50 h-16 w-full bg-card border-b border-border shadow-sm"
     >
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-3 sm:px-4 lg:gap-3 xl:gap-4 lg:px-5">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-1 px-2 sm:gap-2 sm:px-4 lg:gap-3 xl:gap-4 lg:px-5">
         {/* START ZONE: Mobile Hamburger + Brand Logo */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex min-w-0 items-center gap-1 sm:gap-2 shrink-0">
           {/* Mobile hamburger — opens Sheet with full nav */}
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                className="lg:hidden shrink-0"
+                className="lg:hidden h-8 w-8 shrink-0 p-0 sm:h-9 sm:w-9"
                 aria-label={t("nav.openMenu")}
               >
-                <Menu className="h-5 w-5" />
+                <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
             </SheetTrigger>
             <SheetContent side={isRTL ? "right" : "left"} className="w-72 p-0">
@@ -305,19 +305,19 @@ export function Topbar({ title }: TopbarProps) {
               closeAllMenus();
               navigate("dashboard");
             }}
-            className="flex shrink-0 items-center gap-2 whitespace-nowrap hover:opacity-85 transition-opacity"
+            className="flex w-[78px] sm:w-auto min-w-0 shrink-0 items-center gap-1.5 whitespace-nowrap overflow-hidden hover:opacity-85 transition-opacity"
           >
             <img
               src="/masar-x-dashboard-logo.svg"
               alt={`${t("common.brandName")} - ${t("common.brandNameEn")}`}
-              className="h-8 xl:h-9 w-auto max-w-[125px] xl:max-w-[150px] object-contain"
+              className="block h-6 w-full max-w-full sm:h-8 sm:w-auto sm:max-w-[125px] xl:h-9 xl:max-w-[150px] object-contain object-center"
               draggable={false}
             />
           </button>
         </div>
 
         {/* MOBILE PAGE TITLE (only visible below lg) */}
-        <h1 className="lg:hidden flex-1 min-w-0 text-base font-bold text-foreground truncate px-2 text-start">
+        <h1 className="lg:hidden flex-1 min-w-0 text-[13px] sm:text-base font-bold text-foreground truncate px-1 sm:px-2 text-start">
           {title}
         </h1>
 
@@ -538,7 +538,7 @@ export function Topbar({ title }: TopbarProps) {
           </div>
 
           {/* Language Switcher — visible on BOTH Mobile (<lg) and Laptop/Desktop (lg+) */}
-          <LanguageSwitcher variant="topbar" />
+          <LanguageSwitcher variant="topbar" className="h-8 gap-1 px-1.5 text-[10px] sm:h-9 sm:gap-1.5 sm:px-3 sm:text-xs" />
 
           {/* Notifications */}
           <button
@@ -547,10 +547,10 @@ export function Topbar({ title }: TopbarProps) {
               closeAllMenus();
               navigate("notifications");
             }}
-            className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            className="relative flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             aria-label={t("nav.notifications")}
           >
-            <Bell className="h-4 w-4 shrink-0" />
+            <Bell className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
             {unread > 0 && (
               <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500 px-1 text-[9px] font-bold text-white">
                 {unread > 9 ? "9+" : unread}
@@ -566,10 +566,10 @@ export function Topbar({ title }: TopbarProps) {
               navigate("profile");
             }}
             title={user?.name ?? t("nav.myAccount")}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card p-0.5 hover:bg-muted transition-colors"
+            className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card p-0.5 hover:bg-muted transition-colors"
             aria-label={t("nav.profile")}
           >
-            <Avatar className="h-8 w-8 shrink-0">
+            <Avatar className="h-7 w-7 sm:h-8 sm:w-8 shrink-0">
               <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-semibold rounded-full">
                 {initials(user?.name)}
               </AvatarFallback>
@@ -580,11 +580,11 @@ export function Topbar({ title }: TopbarProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden shrink-0 text-muted-foreground hover:text-destructive"
+            className="lg:hidden h-8 w-8 sm:h-9 sm:w-9 shrink-0 p-0 text-muted-foreground hover:text-destructive"
             onClick={logout}
             aria-label={t("nav.logout")}
           >
-            <LogOut className="h-5 w-5 rtl-flip" />
+            <LogOut className="h-4 w-4 sm:h-5 sm:w-5 rtl-flip" />
           </Button>
         </div>
       </div>
