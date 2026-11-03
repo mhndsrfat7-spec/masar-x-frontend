@@ -1,3 +1,5 @@
+import { tStatic, getCurrentLocale } from "@/i18n";
+
 /**
  * Formatting utilities — currency, dates, phone numbers, etc.
  *
@@ -6,7 +8,7 @@
  */
 
 /**
- * Format an amount (which may be halalas OR sar) as SAR currency in Arabic.
+ * Format an amount (which may be halalas OR sar) as SAR currency in the active language.
  *
  * Heuristic: if the value looks like halalas (> 1000 with no decimal)
  * we divide by 100. Otherwise we treat it as SAR. Pass `unit: "hal"`
@@ -30,11 +32,12 @@ export function formatSAR(
     // Otherwise we assume SAR.
   }
 
-  const formatted = new Intl.NumberFormat("ar-SA", {
+  const localeCode = getCurrentLocale() === "en" ? "en-US" : "ar-SA";
+  const formatted = new Intl.NumberFormat(localeCode, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(v);
-  return withSymbol ? `${formatted} ر.س` : formatted;
+  return withSymbol ? `${formatted} ${tStatic("common.sar")}` : formatted;
 }
 
 /** Convert halalas to SAR number (no formatting). */
@@ -49,11 +52,12 @@ export function sarToHal(sar: number | undefined | null): number {
   return Math.round(sar * 100);
 }
 
-/** Format an ISO date string to Arabic short date. */
+/** Format an ISO date string to short date in active locale. */
 export function formatDate(iso?: string): string {
-  if (!iso) return "—";
+  if (!iso) return tStatic("common.none");
   try {
-    return new Intl.DateTimeFormat("ar-SA", {
+    const localeCode = getCurrentLocale() === "en" ? "en-US" : "ar-SA";
+    return new Intl.DateTimeFormat(localeCode, {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -63,11 +67,12 @@ export function formatDate(iso?: string): string {
   }
 }
 
-/** Format an ISO date string to Arabic short date + time. */
+/** Format an ISO date string to short date + time in active locale. */
 export function formatDateTime(iso?: string): string {
-  if (!iso) return "—";
+  if (!iso) return tStatic("common.none");
   try {
-    return new Intl.DateTimeFormat("ar-SA", {
+    const localeCode = getCurrentLocale() === "en" ? "en-US" : "ar-SA";
+    return new Intl.DateTimeFormat(localeCode, {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -79,20 +84,20 @@ export function formatDateTime(iso?: string): string {
   }
 }
 
-/** Time-ago formatter (Arabic). */
+/** Time-ago formatter in active locale. */
 export function timeAgo(iso?: string): string {
-  if (!iso) return "—";
+  if (!iso) return tStatic("common.none");
   try {
     const diff = Date.now() - new Date(iso).getTime();
     const mins = Math.floor(diff / 60000);
-    if (mins < 1) return "الآن";
-    if (mins < 60) return `منذ ${mins} دقيقة`;
+    if (mins < 1) return tStatic("common.now");
+    if (mins < 60) return tStatic("common.minutesAgo", { count: mins });
     const hours = Math.floor(mins / 60);
-    if (hours < 24) return `منذ ${hours} ساعة`;
+    if (hours < 24) return tStatic("common.hoursAgo", { count: hours });
     const days = Math.floor(hours / 24);
-    if (days < 30) return `منذ ${days} يوم`;
-    if (days < 365) return `منذ ${Math.floor(days / 30)} شهر`;
-    return `منذ ${Math.floor(days / 365)} سنة`;
+    if (days < 30) return tStatic("common.daysAgo", { count: days });
+    if (days < 365) return tStatic("common.monthsAgo", { count: Math.floor(days / 30) });
+    return tStatic("common.yearsAgo", { count: Math.floor(days / 365) });
   } catch {
     return iso;
   }
@@ -118,7 +123,7 @@ export function isValidSaudiPhone(input: string): boolean {
 
 /** Initials from a name (max 2 chars). */
 export function initials(name?: string): string {
-  if (!name) return "؟";
+  if (!name) return getCurrentLocale() === "en" ? "?" : "؟";
   const parts = name.trim().split(/\s+/).slice(0, 2);
   return parts.map((p) => p[0]).join("");
 }

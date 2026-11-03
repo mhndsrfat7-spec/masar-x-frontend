@@ -5,6 +5,7 @@ import { useRouterStore } from "@/store/routerStore";
 import { useAuthStore } from "@/store/authStore";
 import { isProfileRestricted } from "@/lib/profileCompletion";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "@/i18n";
 
 /**
  * Restricted-browsing banner — shown at the top of the dashboard when the user
@@ -16,6 +17,7 @@ export function ProfileRestrictionBanner() {
   const navigate = useRouterStore((s) => s.navigate);
   const user = useAuthStore((s) => s.user);
   const session = useAuthStore((s) => s.session);
+  const { t } = useTranslation();
 
   // Only show when authenticated and restricted.
   if (!session?.accessToken) return null;
@@ -30,9 +32,7 @@ export function ProfileRestrictionBanner() {
               <AlertTriangle className="h-4 w-4" />
             </span>
             <p className="text-xs sm:text-sm text-amber-900 leading-relaxed">
-              حسابك حالياً في وضع التصفح المقيّد — يرجى إكمال بيانات ملفك الشخصي
-              (الاسم، البريد الإلكتروني، وكلمة المرور، وبيانات المتجر للتاجر)
-              لتفعيل إنشاء الشحنات والعمليات المالية.
+              {t("restriction.bannerText")}
             </p>
           </div>
           <Button
@@ -40,7 +40,7 @@ export function ProfileRestrictionBanner() {
             className="gap-1.5 shrink-0 bg-amber-600 text-white hover:bg-amber-700"
             onClick={() => navigate("profile")}
           >
-            إكمال البيانات الآن
+            {t("restriction.completeDataNow")}
             <ArrowLeft className="h-3.5 w-3.5 rtl-flip" />
           </Button>
         </div>

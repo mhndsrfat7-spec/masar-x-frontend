@@ -14,6 +14,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatSAR, halToSar, formatDate } from "@/lib/format";
+import { useTranslation } from "@/i18n";
 import type { Shipment } from "@/types/api";
 
 interface AwbWaybillModalProps {
@@ -37,6 +38,7 @@ export function AwbWaybillModal({
 }: AwbWaybillModalProps) {
   const [printMode, setPrintMode] = useState<"thermal" | "a4" | null>(null);
   const [copied, setCopied] = useState(false);
+  const { t } = useTranslation();
 
   if (!shipment) return null;
 
@@ -50,10 +52,10 @@ export function AwbWaybillModal({
     try {
       await navigator.clipboard.writeText(trackingNumber);
       setCopied(true);
-      toast.success("تم نسخ رقم البوليصة");
+      toast.success(t("awbModal.copiedWaybillToast"));
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error("تعذّر النسخ");
+      toast.error(t("common.copyFailed"));
     }
   };
 
@@ -82,13 +84,21 @@ export function AwbWaybillModal({
   const handleDownloadInvoice = () => {
     // In demo: generate a simple text invoice. In real: open the invoice PDF URL.
     if (shipment.id) {
-      toast.info("في الوضع الحقيقي سيتم فتح ملف الفاتورة الضريبية (ZATCA VAT) من الخادم");
+      toast.info(t("awbModal.zatcaDemoToast"));
       // Real implementation would call invoicesApi.pdf(token, shipment.invoiceId)
     }
   };
 
   const handleShareWhatsApp = () => {
-    const text = `شحنة مسار إكس #${trackingNumber}%0A%0Aالمرسِل: ${shipment.senderName ?? "-"}%0Aالمستلِم: ${shipment.receiverName ?? "-"}%0Aالمسار: ${shipment.senderCity ?? "-"} ← ${shipment.receiverCity ?? "-"}%0Aالناقل: ${shipment.carrierNameAr ?? shipment.carrierName ?? "-"}%0Aالحالة: ${shipment.status}%0A%0Aتتبّع الشحنة: https://masarx.sa/track/${trackingNumber}`;
+    const text = t("awbModal.whatsappShareText", {
+      trackingNumber,
+      sender: shipment.senderName ?? "-",
+      receiver: shipment.receiverName ?? "-",
+      origin: shipment.senderCity ?? "-",
+      dest: shipment.receiverCity ?? "-",
+      carrier: shipment.carrierNameAr ?? shipment.carrierName ?? "-",
+      status: shipment.status,
+    });
     window.open(`https://wa.me/?text=${text}`, "_blank", "noopener,noreferrer");
   };
 
@@ -96,21 +106,21 @@ export function AwbWaybillModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto p-0">
         <DialogHeader className="sr-only">
-          <DialogTitle>معاينة بوليصة الشحن — {trackingNumber}</DialogTitle>
+          <DialogTitle>{t("awbModal.srTitle", { trackingNumber })}</DialogTitle>
         </DialogHeader>
 
         {/* Header bar (no-print) */}
         <div className="no-print sticky top-0 z-10 flex items-center justify-between bg-card border-b border-border px-5 py-3">
           <div className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-primary" />
-            <h2 className="text-base font-bold text-foreground">بوليصة الشحن الإلكترونية</h2>
+            <h2 className="text-base font-bold text-foreground">{t("awbModal.title")}</h2>
           </div>
           <Button
             variant="ghost"
             size="icon"
             onClick={() => onOpenChange(false)}
             className="h-8 w-8"
-            aria-label="إغلاق"
+            aria-label={t("common.close")}
           >
             <X className="h-4 w-4" />
           </Button>
@@ -123,16 +133,16 @@ export function AwbWaybillModal({
             <div className="flex items-center gap-3">
               <LogoMark size={48} />
               <div>
-                <p className="text-lg font-extrabold text-foreground leading-tight">مسار إكس</p>
-                <p className="text-[10px] font-medium tracking-[0.2em] text-muted-foreground">MASAR X</p>
-                <p className="text-[10px] text-muted-foreground mt-1">منصة الشحن السعودية الموحدة</p>
+                <p className="text-lg font-extrabold text-foreground leading-tight">{t("common.brandName")}</p>
+                <p className="text-[10px] font-medium tracking-[0.2em] text-muted-foreground">{t("common.brandNameEn")}</p>
+                <p className="text-[10px] text-muted-foreground mt-1">{t("common.brandSubtitle")}</p>
               </div>
             </div>
-            <div className="text-left">
+            <div className="text-end">
               <div className="rounded-lg bg-primary/10 px-3 py-1.5 mb-1">
-                <p className="text-[10px] text-muted-foreground">شركة الشحن</p>
+                <p className="text-[10px] text-muted-foreground">{t("awbModal.carrierLabel")}</p>
                 <p className="text-sm font-bold text-primary">
-                  {shipment.carrierNameAr ?? shipment.carrierName ?? shipment.carrier ?? "—"}
+                  {shipment.carrierNameAr ?? shipment.carrierName ?? shipment.carrier ?? t("common.none")}
                 </p>
               </div>
               <span
@@ -143,7 +153,7 @@ export function AwbWaybillModal({
                     : "bg-emerald-100 text-emerald-800"
                 )}
               >
-                {isCOD ? `COD: ${formatSAR(codAmount)}` : "مدفوع مسبقاً (PREPAID)"}
+                {isCOD ? t("awbModal.codBadge", { amount: formatSAR(codAmount) }) : t("awbModal.prepaidBadge")}
               </span>
             </div>
           </div>
@@ -168,47 +178,47 @@ export function AwbWaybillModal({
           {/* Sender + Receiver grid */}
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div className="rounded-lg border-2 border-emerald-200 bg-emerald-50/40 p-4">
-              <p className="text-[10px] font-bold text-emerald-700 mb-2 tracking-wider">المرسِل (FROM)</p>
-              <p className="text-sm font-bold text-foreground mb-1">{shipment.senderName ?? "—"}</p>
-              <p className="text-xs text-muted-foreground" dir="ltr">{shipment.senderPhone ?? "—"}</p>
-              <p className="text-xs text-foreground mt-2">{shipment.senderCity ?? "—"}</p>
-              <p className="text-[11px] text-muted-foreground">{shipment.senderAddress ?? "—"}</p>
+              <p className="text-[10px] font-bold text-emerald-700 mb-2 tracking-wider">{t("awbModal.senderFrom")}</p>
+              <p className="text-sm font-bold text-foreground mb-1">{shipment.senderName ?? t("common.none")}</p>
+              <p className="text-xs text-muted-foreground" dir="ltr">{shipment.senderPhone ?? t("common.none")}</p>
+              <p className="text-xs text-foreground mt-2">{shipment.senderCity ?? t("common.none")}</p>
+              <p className="text-[11px] text-muted-foreground">{shipment.senderAddress ?? t("common.none")}</p>
             </div>
             <div className="rounded-lg border-2 border-blue-200 bg-blue-50/40 p-4">
-              <p className="text-[10px] font-bold text-blue-700 mb-2 tracking-wider">المستلِم (TO)</p>
-              <p className="text-sm font-bold text-foreground mb-1">{shipment.receiverName ?? "—"}</p>
-              <p className="text-xs text-muted-foreground" dir="ltr">{shipment.receiverPhone ?? "—"}</p>
-              <p className="text-xs text-foreground mt-2">{shipment.receiverCity ?? "—"}</p>
-              <p className="text-[11px] text-muted-foreground">{shipment.receiverAddress ?? "—"}</p>
+              <p className="text-[10px] font-bold text-blue-700 mb-2 tracking-wider">{t("awbModal.receiverTo")}</p>
+              <p className="text-sm font-bold text-foreground mb-1">{shipment.receiverName ?? t("common.none")}</p>
+              <p className="text-xs text-muted-foreground" dir="ltr">{shipment.receiverPhone ?? t("common.none")}</p>
+              <p className="text-xs text-foreground mt-2">{shipment.receiverCity ?? t("common.none")}</p>
+              <p className="text-[11px] text-muted-foreground">{shipment.receiverAddress ?? t("common.none")}</p>
             </div>
           </div>
 
           {/* Shipment details grid */}
           <div className="grid grid-cols-4 gap-2 mb-6 text-center">
             <div className="rounded-lg border border-border p-2.5">
-              <p className="text-[10px] text-muted-foreground">الوزن</p>
+              <p className="text-[10px] text-muted-foreground">{t("awbModal.weight")}</p>
               <p className="text-sm font-bold text-foreground">
-                {((shipment.weightGrams ?? shipment.weight ?? 0) / 1000).toFixed(2)} كجم
+                {((shipment.weightGrams ?? shipment.weight ?? 0) / 1000).toFixed(2)} {t("common.kg")}
               </p>
             </div>
             <div className="rounded-lg border border-border p-2.5">
-              <p className="text-[10px] text-muted-foreground">عدد القطع</p>
+              <p className="text-[10px] text-muted-foreground">{t("awbModal.piecesCount")}</p>
               <p className="text-sm font-bold text-foreground">{shipment.pieces ?? shipment.quantity ?? 1}</p>
             </div>
             <div className="rounded-lg border border-border p-2.5">
-              <p className="text-[10px] text-muted-foreground">نوع الخدمة</p>
-              <p className="text-sm font-bold text-foreground">{shipment.serviceType ?? "—"}</p>
+              <p className="text-[10px] text-muted-foreground">{t("awbModal.serviceType")}</p>
+              <p className="text-sm font-bold text-foreground">{shipment.serviceType ?? t("common.none")}</p>
             </div>
             <div className="rounded-lg border border-border p-2.5">
-              <p className="text-[10px] text-muted-foreground">التكلفة</p>
+              <p className="text-[10px] text-muted-foreground">{t("awbModal.cost")}</p>
               <p className="text-sm font-bold text-foreground" dir="ltr">{formatSAR(totalSar)}</p>
             </div>
           </div>
 
           {/* Footer */}
           <div className="flex items-center justify-between pt-4 border-t border-border text-[10px] text-muted-foreground">
-            <span>تاريخ الإصدار: {formatDate(shipment.createdAt ?? new Date().toISOString())}</span>
-            <span>مسار إكس — جميع الحقوق محفوظة</span>
+            <span>{t("awbModal.issueDate", { date: formatDate(shipment.createdAt ?? new Date().toISOString()) })}</span>
+            <span>{t("awbModal.footerRights")}</span>
           </div>
         </div>
 
@@ -220,7 +230,7 @@ export function AwbWaybillModal({
             disabled={printMode !== null}
           >
             <Printer className="h-4 w-4" />
-            حراري 4×6
+            {t("awbModal.thermal4x6")}
           </Button>
           <Button
             variant="outline"
@@ -229,7 +239,7 @@ export function AwbWaybillModal({
             disabled={printMode !== null}
           >
             <FileText className="h-4 w-4" />
-            ورق A4
+            {t("awbModal.paperA4")}
           </Button>
           <Button
             variant="outline"
@@ -237,7 +247,7 @@ export function AwbWaybillModal({
             className="gap-2"
           >
             <Receipt className="h-4 w-4" />
-            فاتورة ZATCA
+            {t("awbModal.zatcaInvoice")}
           </Button>
           <Button
             variant="outline"
@@ -245,7 +255,7 @@ export function AwbWaybillModal({
             className="gap-2"
           >
             <Share2 className="h-4 w-4" />
-            مشاركة واتساب
+            {t("awbModal.shareWhatsapp")}
           </Button>
         </div>
       </DialogContent>

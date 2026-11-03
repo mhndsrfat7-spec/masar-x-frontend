@@ -6,6 +6,7 @@ import { useAuthStore } from "@/store/authStore";
 import { isProfileRestricted } from "@/lib/profileCompletion";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/i18n";
 
 /**
  * Inline restriction alert card — drop at the top of sensitive pages
@@ -18,6 +19,7 @@ export function ProfileRestrictionAlert({ className }: { className?: string }) {
   const navigate = useRouterStore((s) => s.navigate);
   const user = useAuthStore((s) => s.user);
   const session = useAuthStore((s) => s.session);
+  const { t } = useTranslation();
 
   if (!session?.accessToken) return null;
   if (!isProfileRestricted(user)) return null;
@@ -35,11 +37,10 @@ export function ProfileRestrictionAlert({ className }: { className?: string }) {
         </span>
         <div>
           <p className="text-sm font-semibold text-amber-900">
-            هذه العملية مقيّدة حتى تُكمل بيانات ملفك الشخصي
+            {t("restriction.alertTitle")}
           </p>
           <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
-            لا يمكن إنشاء شحنات أو إجراء عمليات مالية في وضع التصفح المقيّد.
-            أكمل الاسم والبريد الإلكتروني (وبيانات المتجر للتاجر) من الملف الشخصي لتفعيل هذه الصلاحيات فوراً.
+            {t("restriction.alertDesc")}
           </p>
         </div>
       </div>
@@ -48,7 +49,7 @@ export function ProfileRestrictionAlert({ className }: { className?: string }) {
         className="gap-1.5 shrink-0 bg-amber-600 text-white hover:bg-amber-700"
         onClick={() => navigate("profile")}
       >
-        إكمال البيانات
+        {t("restriction.completeDataBtn")}
         <ArrowLeft className="h-3.5 w-3.5 rtl-flip" />
       </Button>
     </div>

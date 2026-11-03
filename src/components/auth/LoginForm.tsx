@@ -11,7 +11,6 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
-import { LogoMark } from "@/components/brand/Logo";
 import { AccountTypeToggle } from "./AccountTypeToggle";
 import { PhoneInput } from "./PhoneInput";
 import { SecureFooter } from "./SecureFooter";
@@ -21,6 +20,7 @@ import { useRouterStore } from "@/store/routerStore";
 import { ApiClientError } from "@/lib/api/client";
 import { isValidSaudiPhone, normalizeSaudiPhone } from "@/lib/format";
 import { authApi, isDemoMode } from "@/lib/api/services";
+import { useTranslation } from "@/i18n";
 
 /**
  * Login form — phone + password (matches brand reference image).
@@ -35,6 +35,7 @@ import { authApi, isDemoMode } from "@/lib/api/services";
 export function LoginForm() {
   const { loginWithPassword, verifyOtp, requestOtp } = useAuth();
   const navigate = useRouterStore((s) => s.navigate);
+  const { t } = useTranslation();
 
   const [accountType, setAccountType] = useState<UiAccountType>("merchant");
   const [phone, setPhone] = useState("");
@@ -62,26 +63,26 @@ export function LoginForm() {
     setError(null);
 
     if (!phoneValid) {
-      setError("الرجاء إدخال رقم جوال سعودي صحيح");
+      setError(t("auth.errors.invalidSaudiPhone"));
       return;
     }
     if (!passwordValid) {
-      setError("كلمة المرور يجب ألا تقل عن 8 أحرف");
+      setError(t("auth.errors.passwordMin8"));
       return;
     }
 
     setSubmitting(true);
     try {
       await loginWithPassword(fullPhone, password, accountType);
-      toast.success("تم تسجيل الدخول بنجاح");
+      toast.success(t("auth.errors.loginSuccess"));
     } catch (e) {
       const err = e as ApiClientError;
       if (err.code === "OTP_REQUIRED") {
         setOtpRequired(true);
         setError(null);
-        toast.info(err.message || "تم إرسال رمز تحقق إلى جوالك");
+        toast.info(err.message || t("auth.errors.otpSentToast"));
       } else {
-        const msg = err.message || "تعذّر تسجيل الدخول، تحقّق من البيانات";
+        const msg = err.message || t("auth.errors.loginFailed");
         setError(msg);
         toast.error(msg);
       }
@@ -92,16 +93,16 @@ export function LoginForm() {
 
   const handleVerifyOtp = async () => {
     if (!/^\d{6}$/.test(otpCode)) {
-      setError("أدخل رمز التحقق المكوّن من 6 أرقام");
+      setError(t("auth.errors.enter6DigitOtp"));
       return;
     }
     setSubmitting(true);
     setError(null);
     try {
       await verifyOtp(fullPhone, otpCode, accountType);
-      toast.success("تم التحقق وتسجيل الدخول بنجاح");
+      toast.success(t("auth.errors.otpVerifySuccess"));
     } catch (e) {
-      const message = e instanceof ApiClientError ? e.message : "تعذّر التحقق من الرمز";
+      const message = e instanceof ApiClientError ? e.message : t("auth.errors.otpVerifyFailed");
       setError(message);
       toast.error(message);
     } finally {
@@ -115,9 +116,9 @@ export function LoginForm() {
     try {
       await requestOtp(fullPhone, accountType);
       setOtpCode("");
-      toast.success("تم طلب رمز تحقق جديد");
+      toast.success(t("auth.errors.newOtpRequested"));
     } catch (e) {
-      const message = e instanceof ApiClientError ? e.message : "تعذّر إعادة إرسال الرمز";
+      const message = e instanceof ApiClientError ? e.message : t("auth.errors.resendOtpFailed");
       setError(message);
       toast.error(message);
     } finally {
@@ -129,7 +130,7 @@ export function LoginForm() {
     event.preventDefault();
     const normalized = normalizeSaudiPhone(recoveryPhone);
     if (!isValidSaudiPhone(recoveryPhone)) {
-      toast.error("أدخل رقم جوال سعودي صحيح لاستعادة كلمة المرور");
+      toast.error(t("auth.errors.enterValidPhoneForRecovery"));
       return;
     }
     setRecoveryBusy(true);
@@ -137,9 +138,9 @@ export function LoginForm() {
       await authApi.forgotPassword({ phone: normalized, accountType: toApiType(accountType) });
       setRecoveryPhone(normalized);
       setRecoveryOtpRequested(true);
-      toast.success("تم طلب رمز استعادة كلمة المرور");
+      toast.success(t("auth.errors.recoveryCodeRequested"));
     } catch (recoveryError) {
-      toast.error(recoveryError instanceof ApiClientError ? recoveryError.message : "تعذّر طلب رمز الاستعادة");
+      toast.error(recoveryError instanceof ApiClientError ? recoveryError.message : t("auth.errors.recoveryRequestFailed"));
     } finally {
       setRecoveryBusy(false);
     }
@@ -147,9 +148,9 @@ export function LoginForm() {
 
   const submitNewPassword = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!/^\d{6}$/.test(recoveryCode)) { toast.error("أدخل رمز التحقق المكوّن من 6 أرقام"); return; }
-    if (newPassword.length < 8) { toast.error("كلمة المرور الجديدة يجب ألا تقل عن 8 أحرف"); return; }
-    if (newPassword !== confirmNewPassword) { toast.error("تأكيد كلمة المرور غير مطابق"); return; }
+    if (!/^\d{6}$/.test(recoveryCode)) { toast.error(t("auth.errors.enter6DigitOtp")); return; }
+    if (newPassword.length < 8) { toast.error(t("auth.errors.newPasswordMin8")); return; }
+    if (newPassword !== confirmNewPassword) { toast.error(t("auth.errors.passwordConfirmationMismatch")); return; }
     setRecoveryBusy(true);
     try {
       await authApi.resetPassword({
@@ -164,9 +165,9 @@ export function LoginForm() {
       setNewPassword("");
       setConfirmNewPassword("");
       setPassword("");
-      toast.success("تم تغيير كلمة المرور. يمكنك تسجيل الدخول الآن.");
+      toast.success(t("auth.errors.passwordResetSuccess"));
     } catch (recoveryError) {
-      toast.error(recoveryError instanceof ApiClientError ? recoveryError.message : "تعذّر إعادة تعيين كلمة المرور");
+      toast.error(recoveryError instanceof ApiClientError ? recoveryError.message : t("auth.errors.passwordResetFailed"));
     } finally {
       setRecoveryBusy(false);
     }
@@ -176,12 +177,9 @@ export function LoginForm() {
     <div className="w-full">
       {/* Header — title + subtitle */}
       <div className="mb-6">
-        <div className="lg:hidden mb-4 flex justify-center">
-          <LogoMark size={56} />
-        </div>
-        <h1 className="text-2xl font-bold text-foreground">تسجيل الدخول</h1>
+        <h1 className="text-2xl font-bold text-foreground">{t("auth.loginTitle")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          مرحباً بك في مسار إكس — شحنك أدق وأعمالك أسرع
+          {t("auth.loginSubtitle")}
         </p>
       </div>
 
@@ -190,7 +188,7 @@ export function LoginForm() {
 
         {!otpRequired && <div className="space-y-1.5">
           <label htmlFor="phone" className="text-sm font-medium text-foreground">
-            رقم الجوال
+            {t("auth.phoneLabel")}
           </label>
           <PhoneInput
             value={phone}
@@ -202,11 +200,11 @@ export function LoginForm() {
         {otpRequired && (
           <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-4">
             <div>
-              <p className="text-sm font-semibold text-foreground">التحقق من رقم الجوال</p>
+              <p className="text-sm font-semibold text-foreground">{t("auth.verifyPhoneTitle")}</p>
               <p className="text-xs text-muted-foreground mt-1" dir="ltr">{fullPhone}</p>
             </div>
             <label htmlFor="login-otp-code" className="text-sm font-medium text-foreground">
-              رمز التحقق (6 أرقام)
+              {t("auth.otpCodeLabel6")}
             </label>
             <input
               id="login-otp-code"
@@ -221,13 +219,13 @@ export function LoginForm() {
             />
             <div className="flex flex-wrap items-center gap-2">
               <Button type="button" className="flex-1" onClick={handleVerifyOtp} disabled={submitting || otpCode.length !== 6}>
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "تحقق وتسجيل الدخول"}
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : t("auth.verifyAndLogin")}
               </Button>
               <Button type="button" variant="outline" onClick={handleResendOtp} disabled={submitting}>
-                إعادة إرسال الرمز
+                {t("auth.resendCode")}
               </Button>
               <Button type="button" variant="ghost" onClick={() => { setOtpRequired(false); setOtpCode(""); setError(null); }} disabled={submitting}>
-                رجوع
+                {t("common.back")}
               </Button>
             </div>
           </div>
@@ -236,7 +234,7 @@ export function LoginForm() {
         {!otpRequired && <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <label htmlFor="password" className="text-sm font-medium text-foreground">
-              كلمة المرور
+              {t("auth.passwordLabel")}
             </label>
             <button
               type="button"
@@ -248,7 +246,7 @@ export function LoginForm() {
               }}
               className="text-xs text-primary hover:underline font-medium"
             >
-              نسيت كلمة المرور؟
+              {t("auth.forgotPassword")}
             </button>
           </div>
           <div
@@ -276,7 +274,7 @@ export function LoginForm() {
               type="button"
               onClick={() => setShowPass((v) => !v)}
               className="flex items-center px-3 border-r border-border bg-muted/30 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-              aria-label={showPass ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
+              aria-label={showPass ? t("auth.hidePassword") : t("auth.showPassword")}
             >
               {showPass ? (
                 <EyeOff className="h-4 w-4" />
@@ -298,15 +296,14 @@ export function LoginForm() {
           <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5 text-xs text-amber-800 flex items-start gap-2">
             <ShieldCheck className="h-3.5 w-3.5 mt-0.5 shrink-0 text-amber-600" />
             <span>
-              <strong>وضع تجريبي:</strong> استخدم أي رقم جوال سعودي + أي كلمة مرور
-              (4 أحرف على الأقل) لتسجيل الدخول.
+              <strong>{t("auth.demoLoginNoticeTitle")}</strong> {t("auth.demoLoginNoticeText")}
             </span>
           </div>
         ) : !otpRequired ? (
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900 flex items-start gap-2">
             <ShieldCheck className="h-3.5 w-3.5 mt-0.5 shrink-0 text-amber-600" />
             <span>
-              تحاول المنصة تسجيل الدخول بكلمة المرور عبر API. عند عدم تفعيل المسار في الخادم، تنتقل مؤقتًا إلى التحقق عبر OTP.
+              {t("auth.realLoginFallbackNotice")}
             </span>
           </div>
         ) : null}
@@ -320,11 +317,11 @@ export function LoginForm() {
           {submitting ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              جارٍ التحقق…
+              {t("auth.verifying")}
             </>
           ) : (
             <>
-              تسجيل الدخول
+              {t("auth.loginSubmit")}
               <ArrowLeft className="h-4 w-4 rtl-flip" />
             </>
           )}
@@ -335,42 +332,42 @@ export function LoginForm() {
         <div className="mt-5 rounded-2xl border border-primary/20 bg-primary/5 p-4 space-y-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="font-semibold text-sm">استعادة كلمة المرور</h2>
-              <p className="mt-1 text-xs text-muted-foreground">سيتم التحقق من ملكية رقم الجوال قبل تعيين كلمة مرور جديدة.</p>
+              <h2 className="font-semibold text-sm">{t("auth.recoverPasswordTitle")}</h2>
+              <p className="mt-1 text-xs text-muted-foreground">{t("auth.recoverPasswordDesc")}</p>
             </div>
-            <button type="button" className="text-xs text-primary hover:underline" onClick={() => { setRecovering(false); setRecoveryOtpRequested(false); }}>إغلاق</button>
+            <button type="button" className="text-xs text-primary hover:underline" onClick={() => { setRecovering(false); setRecoveryOtpRequested(false); }}>{t("common.close")}</button>
           </div>
           {!recoveryOtpRequested ? (
             <form onSubmit={requestRecoveryCode} className="space-y-3">
-              <label className="block text-xs font-medium">رقم الجوال</label>
+              <label className="block text-xs font-medium">{t("auth.phoneLabel")}</label>
               <PhoneInput value={recoveryPhone} onChange={setRecoveryPhone} />
-              <Button type="submit" className="w-full" disabled={recoveryBusy}>{recoveryBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "إرسال رمز الاستعادة"}</Button>
+              <Button type="submit" className="w-full" disabled={recoveryBusy}>{recoveryBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : t("auth.sendRecoveryCode")}</Button>
             </form>
           ) : (
             <form onSubmit={submitNewPassword} className="space-y-3">
               <p className="text-xs text-muted-foreground" dir="ltr">{recoveryPhone}</p>
-              <label className="block text-xs font-medium">رمز الاستعادة (6 أرقام)</label>
+              <label className="block text-xs font-medium">{t("auth.recoveryCodeLabel")}</label>
               <input value={recoveryCode} onChange={(e) => setRecoveryCode(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" dir="ltr" maxLength={6} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-center font-mono tracking-[0.3em]" />
-              <label className="block text-xs font-medium">كلمة المرور الجديدة</label>
+              <label className="block text-xs font-medium">{t("auth.newPasswordLabel")}</label>
               <input type="password" autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm" minLength={8} />
-              <label className="block text-xs font-medium">تأكيد كلمة المرور الجديدة</label>
+              <label className="block text-xs font-medium">{t("auth.confirmNewPasswordLabel")}</label>
               <input type="password" autoComplete="new-password" value={confirmNewPassword} onChange={(e) => setConfirmNewPassword(e.target.value)} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm" minLength={8} />
-              <Button type="submit" className="w-full" disabled={recoveryBusy}>{recoveryBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "تعيين كلمة المرور الجديدة"}</Button>
-              <Button type="button" variant="ghost" className="w-full" disabled={recoveryBusy} onClick={() => { setRecoveryOtpRequested(false); setRecoveryCode(""); }}>تغيير رقم الجوال</Button>
+              <Button type="submit" className="w-full" disabled={recoveryBusy}>{recoveryBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : t("auth.setNewPasswordBtn")}</Button>
+              <Button type="button" variant="ghost" className="w-full" disabled={recoveryBusy} onClick={() => { setRecoveryOtpRequested(false); setRecoveryCode(""); }}>{t("auth.changePhoneNumber")}</Button>
             </form>
           )}
-          {isDemoMode() && <p className="text-[11px] text-amber-700">وضع تجريبي: لا يُرسل OTP حقيقي ولا يتم تغيير كلمة مرور في نظام إنتاجي.</p>}
+          {isDemoMode() && <p className="text-[11px] text-amber-700">{t("auth.demoRecoveryNotice")}</p>}
         </div>
       )}
 
       <div className="mt-6 text-center text-sm text-muted-foreground">
-        ليس لديك حساب؟{" "}
+        {t("auth.noAccountQuestion")}{" "}
         <button
           type="button"
           onClick={() => navigate("register")}
           className="font-semibold text-primary hover:underline"
         >
-          أنشئ حساباً جديداً
+          {t("auth.createNewAccountLink")}
         </button>
       </div>
 

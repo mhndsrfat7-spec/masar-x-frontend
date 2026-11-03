@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/i18n";
 
 interface LogoProps {
   size?: number;
@@ -21,6 +22,8 @@ export function Logo({
   variant = "dark",
   className,
 }: LogoProps) {
+  const { t } = useTranslation();
+
   return (
     <div className={cn("flex items-center gap-2.5", className)}>
       <LogoMark size={size} />
@@ -33,7 +36,7 @@ export function Logo({
               textClassName
             )}
           >
-            مسار إكس
+            {t("common.brandName")}
           </span>
           <span
             className={cn(
@@ -41,7 +44,7 @@ export function Logo({
               variant === "light" ? "text-white/60" : "text-muted-foreground"
             )}
           >
-            MASAR X
+            {t("common.brandNameEn")}
           </span>
         </div>
       )}
@@ -60,6 +63,8 @@ export function LogoMark({
   size?: number;
   className?: string;
 }) {
+  const { t } = useTranslation();
+
   return (
     <svg
       width={size}
@@ -68,7 +73,7 @@ export function LogoMark({
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={cn("shrink-0", className)}
-      aria-label="مسار إكس"
+      aria-label={t("common.brandName")}
       role="img"
     >
       <defs>

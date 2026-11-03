@@ -1,125 +1,3 @@
-// "use client";
-
-// import {
-//   Package,
-//   Truck,
-//   Search,
-//   MapPin,
-//   Wallet,
-//   Scale,
-//   ArrowLeft,
-//   type LucideIcon,
-// } from "lucide-react";
-// import { useRouterStore, type RouteName } from "@/store/routerStore";
-// import { cn } from "@/lib/utils";
-
-// interface QuickNavItem {
-//   route: RouteName;
-//   label: string;
-//   icon: LucideIcon;
-// }
-
-// const NAV_ITEMS: QuickNavItem[] = [
-//   { route: "shipments", label: "الشحنات", icon: Package },
-//   { route: "carriers", label: "الشركات المتاحة", icon: Truck },
-//   { route: "tracking", label: "تتبّع الشحنات", icon: Search },
-//   { route: "address-book", label: "دفتر العناوين", icon: MapPin },
-//   { route: "wallet", label: "المحفظة الرقمية", icon: Wallet },
-//   { route: "weight-disputes", label: "اعتراضات الوزن", icon: Scale },
-// ];
-
-// /**
-//  * Capsule-style white quick-nav bar with 6 sections separated by soft
-//  * vertical dividers. Matches the brand reference dashboard layout.
-//  *
-//  * On mobile: horizontally scrollable.
-//  */
-// export function QuickNav() {
-//   const navigate = useRouterStore((s) => s.navigate);
-//   const route = useRouterStore((s) => s.route);
-
-//   return (
-//     <nav className="rounded-full border border-border bg-card p-1.5 shadow-card-soft overflow-x-auto no-scrollbar">
-//       <ul className="flex items-stretch gap-0 min-w-max">
-//         {NAV_ITEMS.map((item, idx) => {
-//           const Icon = item.icon;
-//           const active =
-//             route === item.route ||
-//             (item.route === "shipments" && route === "shipment-details");
-//           return (
-//             <li key={item.route} className="flex items-center">
-//               {idx > 0 && (
-//                 <span className="h-6 w-px bg-border mx-1" aria-hidden />
-//               )}
-//               <button
-//                 type="button"
-//                 onClick={() => navigate(item.route)}
-//                 className={cn(
-//                   "flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all whitespace-nowrap",
-//                   active
-//                     ? "bg-primary text-primary-foreground shadow-sm"
-//                     : "text-foreground hover:bg-muted"
-//                 )}
-//                 aria-current={active ? "page" : undefined}
-//               >
-//                 <Icon className="h-4 w-4 shrink-0" />
-//                 <span>{item.label}</span>
-//               </button>
-//             </li>
-//           );
-//         })}
-//       </ul>
-//     </nav>
-//   );
-// }
-
-// /**
-//  * Tall illustrated brand promo card — "من حولك إلى العالم".
-//  * Uses gradient + decorative shapes, no external images.
-//  */
-// export function BrandPromoCard() {
-//   const navigate = useRouterStore((s) => s.navigate);
-//   return (
-//     <div className="relative overflow-hidden rounded-2xl bg-brand-gradient-emerald text-white shadow-brand-lg min-h-[280px] flex flex-col justify-between p-6">
-//       {/* Decorative dots */}
-//       <div className="absolute inset-0 opacity-[0.1]" aria-hidden>
-//         <svg viewBox="0 0 200 280" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-//           <defs>
-//             <pattern id="brand-promo-dots" x="0" y="0" width="16" height="16" patternUnits="userSpaceOnUse">
-//               <circle cx="2" cy="2" r="1" fill="white" />
-//             </pattern>
-//           </defs>
-//           <rect width="200" height="280" fill="url(#brand-promo-dots)" />
-//         </svg>
-//       </div>
-
-//       {/* Floating truck icon */}
-//       <div className="absolute top-6 left-6 animate-float opacity-90" aria-hidden>
-//         <Truck className="h-10 w-10 text-white/30" />
-//       </div>
-
-//       <div className="relative z-10 mt-auto space-y-3">
-//         <h3 className="text-xl font-bold leading-tight">
-//           من حولك إلى العالم
-//         </h3>
-//         <p className="text-sm text-white/80 leading-relaxed">
-//           شحن موثوق.. لكل وجهة. اربط متجرك بأكثر من 5 شركات شحن سعودية ودولية من واجهة واحدة.
-//         </p>
-//         <button
-//           type="button"
-//           onClick={() => navigate("create-shipment")}
-//           className="inline-flex items-center gap-2 rounded-full bg-white/15 backdrop-blur-sm border border-white/25 px-4 py-2 text-xs font-semibold hover:bg-white/25 transition-colors"
-//         >
-//           ابدأ الآن
-//           <ArrowLeft className="h-3.5 w-3.5 rtl-flip" />
-//         </button>
-//       </div>
-//     </div>
-//   );
-// }
-
-
-
 "use client";
 
 import {
@@ -137,6 +15,7 @@ import {
 } from "lucide-react";
 import { useRouterStore, type RouteName } from "@/store/routerStore";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/i18n";
 
 interface QuickNavItem {
   route: RouteName;
@@ -146,48 +25,6 @@ interface QuickNavItem {
   /** Whether this item appears in the 3-item mobile strip (<lg) */
   showOnMobile: boolean;
 }
-
-const NAV_ITEMS: QuickNavItem[] = [
-  {
-    route: "shipments",
-    label: "الشحنات",
-    icon: Package,
-    showOnMobile: false,
-  },
-  {
-    route: "carriers",
-    label: "الشركات المتاحة",
-    mobileLabel: "الشركات المتاحة",
-    icon: Truck,
-    showOnMobile: true,
-  },
-  {
-    route: "tracking",
-    label: "تتبّع الشحنات",
-    mobileLabel: "تتبّع الشحن",
-    icon: Search,
-    showOnMobile: true,
-  },
-  {
-    route: "address-book",
-    label: "دفتر العناوين",
-    mobileLabel: "دفتر العناوين",
-    icon: MapPin,
-    showOnMobile: true,
-  },
-  {
-    route: "wallet",
-    label: "المحفظة الرقمية",
-    icon: Wallet,
-    showOnMobile: false,
-  },
-  {
-    route: "weight-disputes",
-    label: "اعتراضات الوزن",
-    icon: Scale,
-    showOnMobile: false,
-  },
-];
 
 /**
  * Capsule-style quick-nav bar under the HeroBanner.
@@ -199,15 +36,58 @@ const NAV_ITEMS: QuickNavItem[] = [
 export function QuickNav() {
   const navigate = useRouterStore((s) => s.navigate);
   const route = useRouterStore((s) => s.route);
+  const { t, dir } = useTranslation();
+
+  const navItems: QuickNavItem[] = [
+    {
+      route: "shipments",
+      label: t("dashboard.quickNav.shipments"),
+      icon: Package,
+      showOnMobile: false,
+    },
+    {
+      route: "carriers",
+      label: t("dashboard.quickNav.availableCarriers"),
+      mobileLabel: t("dashboard.quickNav.availableCarriers"),
+      icon: Truck,
+      showOnMobile: true,
+    },
+    {
+      route: "tracking",
+      label: t("dashboard.quickNav.trackShipments"),
+      mobileLabel: t("dashboard.quickNav.trackShipmentsMobile"),
+      icon: Search,
+      showOnMobile: true,
+    },
+    {
+      route: "address-book",
+      label: t("dashboard.quickNav.addressBook"),
+      mobileLabel: t("dashboard.quickNav.addressBook"),
+      icon: MapPin,
+      showOnMobile: true,
+    },
+    {
+      route: "wallet",
+      label: t("dashboard.quickNav.digitalWallet"),
+      icon: Wallet,
+      showOnMobile: false,
+    },
+    {
+      route: "weight-disputes",
+      label: t("dashboard.quickNav.weightDisputes"),
+      icon: Scale,
+      showOnMobile: false,
+    },
+  ];
 
   return (
     <nav
-      dir="rtl"
-      aria-label="الوصول السريع"
+      dir={dir}
+      aria-label={t("dashboard.quickNav.ariaLabel")}
       className="w-full rounded-full border border-border bg-card p-1 sm:p-1.5 lg:px-3 lg:py-1.5 shadow-card-soft"
     >
       <ul className="grid grid-cols-3 lg:grid-cols-6 items-center w-full">
-        {NAV_ITEMS.map((item, idx) => {
+        {navItems.map((item, idx) => {
           const Icon = item.icon;
           const active =
             route === item.route ||
@@ -227,7 +107,7 @@ export function QuickNav() {
               {/* Vertical divider on Mobile (<lg) between the 3 visible items */}
               {item.showOnMobile && !isFirstMobileItem && (
                 <span
-                  className="lg:hidden absolute right-0 top-1/2 -translate-y-1/2 h-5 w-px bg-border/80"
+                  className="lg:hidden absolute start-0 top-1/2 -translate-y-1/2 h-5 w-px bg-border/80"
                   aria-hidden
                 />
               )}
@@ -235,7 +115,7 @@ export function QuickNav() {
               {/* Vertical divider on Laptop/Desktop (lg+) between all 6 items */}
               {idx > 0 && (
                 <span
-                  className="hidden lg:block absolute right-0 top-1/2 -translate-y-1/2 h-6 w-px bg-border/80"
+                  className="hidden lg:block absolute start-0 top-1/2 -translate-y-1/2 h-6 w-px bg-border/80"
                   aria-hidden
                 />
               )}
@@ -278,61 +158,29 @@ export function QuickNav() {
  */
 export function BrandPromoCard() {
   const navigate = useRouterStore((s) => s.navigate);
+  const { t, dir } = useTranslation();
+
   return (
     <div
-      dir="rtl"
-      className="relative overflow-hidden rounded-2xl bg-brand-gradient-emerald text-white shadow-brand-lg p-4 sm:p-5 lg:p-6 lg:h-[420px] h-full flex flex-col justify-between gap-3 lg:gap-0"
+      dir={dir}
+      className="brand-promo-surface brand-wave-surface relative overflow-hidden rounded-2xl text-white shadow-brand-lg p-4 sm:p-5 lg:p-6 lg:h-[420px] h-full flex flex-col justify-between gap-3 lg:gap-0"
     >
-      {/* Decorative dotted pattern & route rings */}
-      <div
-        className="absolute inset-0 opacity-[0.12] pointer-events-none"
-        aria-hidden
-      >
-        <svg
-          viewBox="0 0 240 420"
-          className="w-full h-full"
-          preserveAspectRatio="xMidYMid slice"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <defs>
-            <pattern
-              id="brand-promo-dots"
-              x="0"
-              y="0"
-              width="18"
-              height="18"
-              patternUnits="userSpaceOnUse"
-            >
-              <circle cx="2" cy="2" r="1.2" fill="white" />
-            </pattern>
-          </defs>
-          <rect width="240" height="420" fill="url(#brand-promo-dots)" />
-          <circle
-            cx="120"
-            cy="135"
-            r="75"
-            fill="none"
-            stroke="white"
-            strokeWidth="1"
-            strokeDasharray="4 6"
-          />
-          <circle
-            cx="120"
-            cy="135"
-            r="48"
-            fill="none"
-            stroke="#C5D86D"
-            strokeWidth="1.2"
-            strokeDasharray="3 5"
-          />
+      {/* Clean animated waves and soft light — no dotted texture. */}
+      <div className="brand-wave-lines" aria-hidden="true">
+        <svg viewBox="0 0 900 520" preserveAspectRatio="none">
+          <path className="brand-wave-line brand-wave-line-one" d="M-30 355 C130 260 250 425 410 330 S700 255 930 340" />
+          <path className="brand-wave-line brand-wave-line-two" d="M-30 405 C145 315 270 470 455 382 S720 310 930 390" />
+          <path className="brand-wave-line brand-wave-line-three" d="M-30 300 C155 390 290 225 470 300 S735 395 930 285" />
         </svg>
       </div>
+      <div className="brand-promo-glow brand-promo-glow-one" aria-hidden="true" />
+      <div className="brand-promo-glow brand-promo-glow-two" aria-hidden="true" />
 
       {/* Top row: status badge + floating icon */}
       <div className="relative z-10 flex items-center justify-between gap-2">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 backdrop-blur-sm border border-white/20 px-2.5 py-0.5 lg:px-3 lg:py-1 text-[10px] lg:text-[11px] font-semibold text-white">
-          <ShieldCheck className="h-3 w-3 lg:h-3.5 lg:w-3.5 text-[#C5D86D] shrink-0" />
-          تغطية شحن ذكية
+          <ShieldCheck className="h-3 w-3 lg:h-3.5 lg:w-3.5 text-emerald-200 shrink-0" />
+          {t("dashboard.quickNav.promoBadge")}
         </span>
         <div className="flex h-7 w-7 lg:h-9 lg:w-9 items-center justify-center rounded-xl bg-white/10 border border-white/15 backdrop-blur-sm">
           <Plane className="h-3.5 w-3.5 lg:h-4 lg:w-4 text-white/90 animate-float" />
@@ -342,35 +190,34 @@ export function BrandPromoCard() {
       {/* Center visual emblem — Laptop only (lg+) so mobile stays compact */}
       <div className="hidden lg:flex relative z-10 my-auto py-4 flex-col items-center justify-center text-center">
         <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg">
-          <Globe2 className="h-10 w-10 text-[#C5D86D]" />
+          <Globe2 className="h-10 w-10 text-emerald-200" />
           <span className="absolute -bottom-2 -right-2 flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500 text-white shadow-md border border-white/30">
             <Truck className="h-4 w-4" />
           </span>
         </div>
         <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-black/15 px-3 py-1 text-[11px] text-white/85">
-          <span>+5 ناقلين معتمدين</span>
+          <span>{t("dashboard.quickNav.promoCarriersCount")}</span>
           <span className="h-1 w-1 rounded-full bg-[#C5D86D]" />
-          <span>تتبّع فوري</span>
+          <span>{t("dashboard.quickNav.promoInstantTracking")}</span>
         </div>
       </div>
 
       {/* Bottom copy + CTA (compact on mobile, spacious on laptop) */}
-      <div className="relative z-10 flex flex-col sm:flex-row lg:flex-col items-start sm:items-center lg:items-stretch justify-between gap-2.5 lg:space-y-3 text-right">
+      <div className="relative z-10 flex flex-col sm:flex-row lg:flex-col items-start sm:items-center lg:items-stretch justify-between gap-2.5 lg:space-y-3 text-start">
         <div className="space-y-1">
           <h3 className="text-base sm:text-lg lg:text-xl font-bold leading-tight">
-            من حولك إلى العالم
+            {t("dashboard.quickNav.promoTitle")}
           </h3>
           <p className="text-[11px] sm:text-xs lg:text-sm text-white/85 leading-relaxed line-clamp-2 lg:line-clamp-none">
-            شحن موثوق.. لكل وجهة. اربط متجرك بأبرز شركات الشحن السعودية والدولية
-            من واجهة واحدة وبأقل الأسعار.
+            {t("dashboard.quickNav.promoDesc")}
           </p>
         </div>
         <button
           type="button"
           onClick={() => navigate("create-shipment")}
-          className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full bg-[#C5D86D] text-[#0F352E] px-4 py-2 lg:px-5 lg:py-2.5 text-xs font-bold shadow-md hover:bg-[#d3e47e] transition-colors"
+          className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full bg-emerald-300 text-[#082A2C] px-4 py-2 lg:px-5 lg:py-2.5 text-xs font-bold shadow-md hover:bg-emerald-200 transition-colors"
         >
-          ابدأ شحنتك الآن
+          {t("dashboard.quickNav.promoCta")}
           <ArrowLeft className="h-3.5 w-3.5 rtl-flip" />
         </button>
       </div>

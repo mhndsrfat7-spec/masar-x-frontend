@@ -16,10 +16,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { timeAgo } from "@/lib/format";
+import { useTranslation } from "@/i18n";
 
 export function NotificationsPage() {
   const { token } = useAuth();
   const { list, loading, error, reload, markReadOptimistic } = useNotifications(token);
+  const { t } = useTranslation();
 
   const unread = list.filter((n) => !(n.read ?? n.isRead));
 
@@ -28,10 +30,10 @@ export function NotificationsPage() {
     try {
       await notificationsApi.markRead(token, unread.map((n) => n.id));
       markReadOptimistic(unread.map((n) => n.id));
-      toast.success("تم تعليم جميع الإشعارات كمقروءة");
+      toast.success(t("notificationsPage.markedAllReadToast"));
     } catch (e) {
       toast.error(
-        e instanceof ApiClientError ? e.message : "تعذّر تحديث الإشعارات"
+        e instanceof ApiClientError ? e.message : t("notificationsPage.updateNotificationsFailed")
       );
     }
   };
@@ -43,7 +45,7 @@ export function NotificationsPage() {
       markReadOptimistic([id]);
     } catch (e) {
       toast.error(
-        e instanceof ApiClientError ? e.message : "تعذّر تحديث الإشعار"
+        e instanceof ApiClientError ? e.message : t("notificationsPage.updateNotificationFailed")
       );
     }
   };
@@ -51,8 +53,11 @@ export function NotificationsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="الإشعارات"
-        description={`${unread.length} إشعار غير مقروء من أصل ${list.length}.`}
+        title={t("notificationsPage.title")}
+        description={t("notificationsPage.description", {
+          unread: unread.length,
+          total: list.length,
+        })}
         action={
           unread.length > 0 && (
             <Button
@@ -62,7 +67,7 @@ export function NotificationsPage() {
               onClick={markAllRead}
             >
               <CheckCheck className="h-4 w-4" />
-              تعليم الكل كمقروء
+              {t("notificationsPage.markAllReadBtn")}
             </Button>
           )
         }
@@ -71,13 +76,13 @@ export function NotificationsPage() {
       <Card>
         <CardContent className="p-0">
           {loading ? (
-            <LoadingState message="جارٍ تحميل الإشعارات…" className="py-16" />
+            <LoadingState message={t("notificationsPage.loading")} className="py-16" />
           ) : error ? (
             <ErrorState message={error} onRetry={reload} className="py-16" />
           ) : list.length === 0 ? (
             <EmptyState
-              title="لا توجد إشعارات"
-              description="ستظهر هنا تنبيهات الشحنات والمعاملات المهمة."
+              title={t("notificationsPage.emptyTitle")}
+              description={t("notificationsPage.emptyDesc")}
               icon={BellOff}
               className="py-16"
             />
@@ -104,14 +109,14 @@ export function NotificationsPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
                         <p className="text-sm font-semibold text-foreground">
-                          {n.title ?? n.titleAr ?? "إشعار"}
+                          {n.title ?? n.titleAr ?? t("notificationsPage.notificationFallback")}
                         </p>
                         {isUnread && (
                           <Badge
                             variant="secondary"
                             className="text-[10px] bg-primary/10 text-primary"
                           >
-                            جديد
+                            {t("notificationsPage.newBadge")}
                           </Badge>
                         )}
                       </div>
@@ -130,7 +135,7 @@ export function NotificationsPage() {
                             onClick={() => markOneRead(n.id)}
                             className="text-xs text-primary hover:underline"
                           >
-                            تعليم كمقروء
+                            {t("notificationsPage.markAsReadBtn")}
                           </button>
                         )}
                       </div>

@@ -370,3 +370,168 @@
 @media print {
   body { background: white; }
 }
+/* إخفاء شريط التمرير في الهواتف فقط */
+@media screen and (max-width: 767px) {
+  html,
+  body,
+  * {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar,
+  *::-webkit-scrollbar,
+  .scrollbar-thin::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+}
+
+/* ===== Auth brand panel motion ===== */
+.auth-brand-panel {
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse at 18% 78%, rgba(16, 185, 129, 0.16), transparent 42%),
+    radial-gradient(ellipse at 86% 18%, rgba(163, 217, 165, 0.12), transparent 38%),
+    linear-gradient(135deg, #0D3B3E 0%, #082A2C 58%, #104B3D 100%);
+}
+
+.auth-wave-layer {
+  position: absolute;
+  inset-inline: -8%;
+  bottom: 5%;
+  height: 38%;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  opacity: 0.72;
+  mask-image: linear-gradient(to top, black, transparent 94%);
+}
+
+.auth-wave {
+  position: absolute;
+  inset: 0;
+  width: 116%;
+  height: 100%;
+  fill: none;
+  stroke-linecap: round;
+}
+
+.auth-wave path {
+  stroke-width: 1.35;
+  vector-effect: non-scaling-stroke;
+}
+
+.auth-wave-one {
+  stroke: rgba(110, 231, 183, 0.24);
+  animation: auth-wave-drift 15s ease-in-out infinite alternate;
+}
+
+.auth-wave-two {
+  stroke: rgba(163, 217, 165, 0.19);
+  animation: auth-wave-drift 19s ease-in-out infinite alternate-reverse;
+}
+
+.auth-wave-three {
+  stroke: rgba(255, 255, 255, 0.10);
+  animation: auth-wave-drift 23s ease-in-out infinite alternate;
+}
+
+@keyframes auth-wave-drift {
+  from { transform: translate3d(-2%, 5px, 0) scaleY(0.96); }
+  to { transform: translate3d(2%, -8px, 0) scaleY(1.04); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-wave-one,
+  .auth-wave-two,
+  .auth-wave-three,
+  .animate-float,
+  .animate-pulse-soft {
+    animation: none !important;
+  }
+}
+
+
+/* Unified, clean emerald surfaces for auth, profile and dashboard promo. */
+.brand-promo-surface,
+.profile-cover-surface {
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse at 84% 12%, rgba(16,185,129,.22), transparent 38%),
+    radial-gradient(ellipse at 8% 92%, rgba(163,217,165,.13), transparent 40%),
+    linear-gradient(118deg, #082A2C 0%, #0D3B3E 54%, #1F7A4E 100%);
+}
+
+.brand-wave-surface {
+  isolation: isolate;
+}
+
+.brand-wave-lines {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: .72;
+  mask-image: linear-gradient(to top, black, transparent 96%);
+}
+
+.brand-wave-lines svg {
+  width: 112%;
+  height: 100%;
+  margin-inline-start: -6%;
+  fill: none;
+  stroke-linecap: round;
+}
+
+.brand-wave-line {
+  vector-effect: non-scaling-stroke;
+  stroke-width: 1.35;
+}
+
+.brand-wave-line-one {
+  stroke: rgba(110,231,183,.28);
+  animation: auth-wave-drift 17s ease-in-out infinite alternate;
+}
+.brand-wave-line-two {
+  stroke: rgba(163,217,165,.2);
+  animation: auth-wave-drift 21s ease-in-out infinite alternate-reverse;
+}
+.brand-wave-line-three {
+  stroke: rgba(255,255,255,.11);
+  animation: auth-wave-drift 25s ease-in-out infinite alternate;
+}
+
+.brand-promo-glow {
+  position: absolute;
+  z-index: 0;
+  width: 13rem;
+  height: 13rem;
+  border-radius: 9999px;
+  filter: blur(48px);
+  pointer-events: none;
+  animation: brand-glow-float 12s ease-in-out infinite alternate;
+}
+.brand-promo-glow-one {
+  top: 8%;
+  inset-inline-end: -8%;
+  background: rgba(16,185,129,.17);
+}
+.brand-promo-glow-two {
+  bottom: -18%;
+  inset-inline-start: -10%;
+  background: rgba(163,217,165,.12);
+  animation-delay: -5s;
+}
+
+@keyframes brand-glow-float {
+  from { transform: translate3d(0, 0, 0) scale(.94); }
+  to { transform: translate3d(-12px, 10px, 0) scale(1.06); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-wave-line, .brand-promo-glow { animation: none !important; }
+}

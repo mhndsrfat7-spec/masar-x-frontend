@@ -3,14 +3,16 @@
 import { Loader2, AlertTriangle, Inbox, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/i18n";
 
 export function LoadingState({
-  message = "جارٍ التحميل…",
+  message,
   className,
 }: {
   message?: string;
   className?: string;
 }) {
+  const { t } = useTranslation();
   return (
     <div
       className={cn(
@@ -19,13 +21,13 @@ export function LoadingState({
       )}
     >
       <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      <p className="text-sm">{message}</p>
+      <p className="text-sm">{message ?? t("common.loading")}</p>
     </div>
   );
 }
 
 export function ErrorState({
-  message = "حدث خطأ غير متوقع",
+  message,
   onRetry,
   className,
 }: {
@@ -33,6 +35,7 @@ export function ErrorState({
   onRetry?: () => void;
   className?: string;
 }) {
+  const { t } = useTranslation();
   return (
     <div
       className={cn(
@@ -43,11 +46,13 @@ export function ErrorState({
       <div className="flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10 text-destructive">
         <AlertTriangle className="h-7 w-7" />
       </div>
-      <p className="text-sm text-muted-foreground max-w-sm">{message}</p>
+      <p className="text-sm text-muted-foreground max-w-sm">
+        {message ?? t("common.unexpectedError")}
+      </p>
       {onRetry && (
         <Button variant="outline" size="sm" onClick={onRetry} className="gap-2">
           <RefreshCw className="h-4 w-4" />
-          إعادة المحاولة
+          {t("common.retry")}
         </Button>
       )}
     </div>
@@ -55,8 +60,8 @@ export function ErrorState({
 }
 
 export function EmptyState({
-  title = "لا توجد بيانات",
-  description = "لم يتم العثور على أي عناصر مطابقة.",
+  title,
+  description,
   icon: Icon = Inbox,
   action,
   className,
@@ -67,6 +72,7 @@ export function EmptyState({
   action?: React.ReactNode;
   className?: string;
 }) {
+  const { t } = useTranslation();
   return (
     <div
       className={cn(
@@ -78,8 +84,12 @@ export function EmptyState({
         <Icon className="h-8 w-8" />
       </div>
       <div className="space-y-1">
-        <h3 className="font-semibold text-foreground">{title}</h3>
-        <p className="text-sm text-muted-foreground max-w-sm">{description}</p>
+        <h3 className="font-semibold text-foreground">
+          {title ?? t("common.noData")}
+        </h3>
+        <p className="text-sm text-muted-foreground max-w-sm">
+          {description ?? t("common.noMatchingItems")}
+        </p>
       </div>
       {action}
     </div>

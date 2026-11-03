@@ -11,6 +11,7 @@ import {
   PackageCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { tStatic, useTranslation } from "@/i18n";
 import type { ShipmentStatus } from "@/types/api";
 
 interface StatusMeta {
@@ -21,103 +22,105 @@ interface StatusMeta {
   dot: string;
 }
 
-const STATUS_MAP: Record<string, StatusMeta> = {
-  // UPPERCASE (real backend values)
+interface StatusStyleMeta {
+  key:
+    | "DRAFT"
+    | "PENDING"
+    | "PROCESSING"
+    | "IN_TRANSIT"
+    | "OUT_FOR_DELIVERY"
+    | "DELIVERED"
+    | "CANCELLED"
+    | "CANCELED"
+    | "RETURNED"
+    | "FAILED";
+  icon: React.ComponentType<{ className?: string }>;
+  className: string;
+  dot: string;
+}
+
+const STATUS_STYLE_MAP: Record<string, StatusStyleMeta> = {
   DRAFT: {
-    label: "مسودة",
-    short: "مسودة",
+    key: "DRAFT",
     icon: Package,
     className: "bg-muted text-muted-foreground border-border",
     dot: "bg-muted-foreground",
   },
   PENDING: {
-    label: "قيد الانتظار",
-    short: "بانتظار",
+    key: "PENDING",
     icon: Clock,
     className: "bg-amber-50 text-amber-700 border-amber-200",
     dot: "bg-amber-500",
   },
   PROCESSING: {
-    label: "قيد المعالجة",
-    short: "معالجة",
+    key: "PROCESSING",
     icon: Clock,
     className: "bg-blue-50 text-blue-700 border-blue-200",
     dot: "bg-blue-500",
   },
   IN_TRANSIT: {
-    label: "قيد التوصيل",
-    short: "توصيل",
+    key: "IN_TRANSIT",
     icon: Truck,
     className: "bg-primary/10 text-primary border-primary/20",
     dot: "bg-primary",
   },
   OUT_FOR_DELIVERY: {
-    label: "خرج للتسليم",
-    short: "خرج",
+    key: "OUT_FOR_DELIVERY",
     icon: Truck,
     className: "bg-primary/10 text-primary border-primary/20",
     dot: "bg-primary",
   },
   DELIVERED: {
-    label: "تم التسليم",
-    short: "تم التسليم",
+    key: "DELIVERED",
     icon: CheckCircle2,
     className: "bg-green-50 text-green-700 border-green-200",
     dot: "bg-green-600",
   },
   CANCELLED: {
-    label: "ملغاة",
-    short: "ملغاة",
+    key: "CANCELLED",
     icon: XCircle,
     className: "bg-red-50 text-red-700 border-red-200",
     dot: "bg-red-500",
   },
   CANCELED: {
-    label: "ملغاة",
-    short: "ملغاة",
+    key: "CANCELED",
     icon: XCircle,
     className: "bg-red-50 text-red-700 border-red-200",
     dot: "bg-red-500",
   },
   RETURNED: {
-    label: "مسترجعة",
-    short: "إرجاع",
+    key: "RETURNED",
     icon: RotateCcw,
     className: "bg-orange-50 text-orange-700 border-orange-200",
     dot: "bg-orange-500",
   },
   FAILED: {
-    label: "فشل التسليم",
-    short: "فشل",
+    key: "FAILED",
     icon: AlertCircle,
     className: "bg-red-50 text-red-700 border-red-200",
     dot: "bg-red-500",
   },
-  // LOWERCASE (mock / fallback values)
-  draft: { label: "مسودة", short: "مسودة", icon: Package, className: "bg-muted text-muted-foreground border-border", dot: "bg-muted-foreground" },
-  pending: { label: "قيد الانتظار", short: "بانتظار", icon: Clock, className: "bg-amber-50 text-amber-700 border-amber-200", dot: "bg-amber-500" },
-  processing: { label: "قيد المعالجة", short: "معالجة", icon: Clock, className: "bg-blue-50 text-blue-700 border-blue-200", dot: "bg-blue-500" },
-  in_transit: { label: "قيد التوصيل", short: "توصيل", icon: Truck, className: "bg-primary/10 text-primary border-primary/20", dot: "bg-primary" },
-  out_for_delivery: { label: "خرج للتسليم", short: "خرج", icon: Truck, className: "bg-primary/10 text-primary border-primary/20", dot: "bg-primary" },
-  delivered: { label: "تم التسليم", short: "تم التسليم", icon: CheckCircle2, className: "bg-green-50 text-green-700 border-green-200", dot: "bg-green-600" },
-  cancelled: { label: "ملغاة", short: "ملغاة", icon: XCircle, className: "bg-red-50 text-red-700 border-red-200", dot: "bg-red-500" },
-  canceled: { label: "ملغاة", short: "ملغاة", icon: XCircle, className: "bg-red-50 text-red-700 border-red-200", dot: "bg-red-500" },
-  returned: { label: "مسترجعة", short: "إرجاع", icon: RotateCcw, className: "bg-orange-50 text-orange-700 border-orange-200", dot: "bg-orange-500" },
-  failed: { label: "فشل التسليم", short: "فشل", icon: AlertCircle, className: "bg-red-50 text-red-700 border-red-200", dot: "bg-red-500" },
-};
-
-const FALLBACK: StatusMeta = {
-  label: "غير معروف",
-  short: "غير معروف",
-  icon: PackageCheck,
-  className: "bg-muted text-muted-foreground border-border",
-  dot: "bg-muted-foreground",
 };
 
 export function getStatusMeta(status: ShipmentStatus): StatusMeta {
-  if (!status) return FALLBACK;
-  const key = String(status).toUpperCase();
-  return STATUS_MAP[key] ?? STATUS_MAP[String(status).toLowerCase()] ?? FALLBACK;
+  const upperKey = status ? String(status).toUpperCase() : "";
+  const style = STATUS_STYLE_MAP[upperKey];
+  if (!style) {
+    return {
+      label: tStatic("status.UNKNOWN.label"),
+      short: tStatic("status.UNKNOWN.short"),
+      icon: PackageCheck,
+      className: "bg-muted text-muted-foreground border-border",
+      dot: "bg-muted-foreground",
+    };
+  }
+  return {
+    label: tStatic(`status.${style.key}.label`),
+    short: tStatic(`status.${style.key}.short`),
+    icon: style.icon,
+    className: style.className,
+    dot: style.dot,
+  };
 }
 
 export function StatusBadge({
@@ -129,6 +132,8 @@ export function StatusBadge({
   size?: "sm" | "md";
   withIcon?: boolean;
 }) {
+  // Subscribe to active locale so StatusBadge re-renders when language changes
+  useTranslation();
   const meta = getStatusMeta(status);
   const Icon = meta.icon;
   return (

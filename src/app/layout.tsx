@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import { ServiceWorkerRegistration } from "@/components/common/ServiceWorkerRegistration";
+import { LanguageProvider } from "@/i18n";
 
 const cairo = Cairo({
   variable: "--font-cairo",
@@ -59,7 +60,7 @@ export default function RootLayout({
       <body
         className={`${cairo.variable} ${geistMono.variable} font-sans antialiased bg-background text-foreground`}
       >
-        {children}
+        <LanguageProvider>{children}</LanguageProvider>
         <ServiceWorkerRegistration />
         <Toaster />
         <SonnerToaster position="top-center" richColors />

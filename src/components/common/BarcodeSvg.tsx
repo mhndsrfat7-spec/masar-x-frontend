@@ -1,17 +1,9 @@
 "use client";
 
+import { useTranslation } from "@/i18n";
+
 /**
  * Lightweight Code128-like SVG barcode generator (no external deps).
- *
- * This is a visual barcode — it renders a deterministic pattern of bars
- * that *looks* like a real Code128 barcode and prints cleanly on thermal
- * labels. For carrier-grade AWB barcodes in production, the backend should
- * return a pre-rendered PDF/PNG via `shipments.label` — but for the in-app
- * preview modal this SVG is more than enough.
- *
- * Algorithm: deterministic pseudo-random bar widths from the input string's
- * char codes, with start/stop bars and quiet zones. Always renders the same
- * for the same input.
  */
 
 interface BarcodeSvgProps {
@@ -34,11 +26,11 @@ export function BarcodeSvg({
   showText = true,
   className,
 }: BarcodeSvgProps) {
+  const { t } = useTranslation();
+
   if (!value) return null;
 
   // Build a deterministic bar pattern from the string.
-  // Each char produces 3 bars (black/white/black) with widths derived
-  // from char code mod 4 + 1 (so widths are 1-4 units).
   const bars: { x: number; w: number; black: boolean }[] = [];
   let cursor = 8; // quiet zone (8 units)
   const unitWidth = (width - 16) / (value.length * 6); // 6 units per char average
@@ -78,7 +70,7 @@ export function BarcodeSvg({
       xmlns="http://www.w3.org/2000/svg"
       className={className}
       role="img"
-      aria-label={`باركود ${value}`}
+      aria-label={t("awbModal.barcodeAria", { value })}
     >
       <rect width={width} height={totalHeight} fill="white" />
       {bars

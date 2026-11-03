@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouterStore, type RouteName } from "@/store/routerStore";
 import { useAuthStore } from "@/store/authStore";
+import { useTranslation } from "@/i18n";
 
 interface AppRouterProps {
   /** Render the auth routes (login/register). */
@@ -22,6 +23,7 @@ export function AppRouter({ authRoutes, dashboardRoutes }: AppRouterProps) {
   const navigate = useRouterStore((s) => s.navigate);
   const session = useAuthStore((s) => s.session);
   const hydrated = useAuthStore((s) => s.hydrated);
+  const { t } = useTranslation();
 
   const isAuthenticated = !!session?.accessToken;
 
@@ -41,7 +43,7 @@ export function AppRouter({ authRoutes, dashboardRoutes }: AppRouterProps) {
       <div className="min-h-screen flex items-center justify-center bg-cream-gradient">
         <div className="flex flex-col items-center gap-3 text-muted-foreground">
           <div className="h-10 w-10 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
-          <p className="text-sm">جارٍ تحميل مسار إكس…</p>
+          <p className="text-sm">{t("common.loadingApp")}</p>
         </div>
       </div>
     );

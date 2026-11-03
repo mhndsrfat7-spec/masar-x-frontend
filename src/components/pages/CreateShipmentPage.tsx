@@ -12,6 +12,11 @@ import {
   Package,
   Store,
   Truck,
+  UserRound,
+  MapPin,
+  Phone,
+  Pencil,
+  Weight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouterStore } from "@/store/routerStore";
@@ -43,6 +48,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatSAR, halToSar } from "@/lib/format";
 import { useShipmentPrefillStore } from "@/store/shipmentPrefillStore";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/i18n";
 import type { CarrierCapabilityResponse, Shipment, Customer } from "@/types/api";
 import type {
   CreateShipmentRequest,
@@ -66,6 +72,7 @@ export function CreateShipmentPage() {
   const { list: contacts } = useCustomers(token);
   const consumePrefill = useShipmentPrefillStore((s) => s.consumePrefill);
   const isProfileRestricted = useIsProfileRestricted();
+  const { t, locale } = useTranslation();
 
   // Sender
   const [senderCityId, setSenderCityId] = useState("");
@@ -115,6 +122,46 @@ export function CreateShipmentPage() {
   const [senderFlash, setSenderFlash] = useState(false);
   const [receiverFlash, setReceiverFlash] = useState(false);
 
+  // Presentation-only expansion state; shipment data and API contracts remain unchanged.
+  const [senderEditing, setSenderEditing] = useState(true);
+  const [receiverEditing, setReceiverEditing] = useState(true);
+  const [expandedPackageIndex, setExpandedPackageIndex] = useState<number | null>(0);
+
+  // Close editable summaries on an actual outside pointer interaction.
+  // Radix popovers/select menus render in portals and must not count as outside clicks.
+  useEffect(() => {
+    const handleOutsidePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+
+      // Radix Select/Popover content is rendered in a portal outside the Card DOM.
+      // Interacting with a city selector option is still an interaction with its
+      // owning form card, so it must never collapse that card.
+      const path = typeof event.composedPath === "function" ? event.composedPath() : [];
+      const overlaySelector = '[data-radix-portal], [data-radix-popper-content-wrapper], [data-radix-select-content], [data-radix-select-viewport], [data-radix-collection-item], [role="listbox"], [role="option"], [data-shipment-select-content]';
+      const isRadixOverlay = path.some((node) =>
+        node instanceof Element && (node.matches(overlaySelector) || Boolean(node.closest(overlaySelector)))
+      );
+      if (isRadixOverlay) return;
+
+      const senderCard = target.closest('[data-shipment-edit-panel="sender"]');
+      const receiverCard = target.closest('[data-shipment-edit-panel="receiver"]');
+      const activePackage = expandedPackageIndex === null ? null : target.closest(`[data-package-editor="${expandedPackageIndex}"]`);
+
+      // Only a true outside interaction closes a completed card. Any field,
+      // button, trigger, or control inside that card keeps it open.
+      if (!senderCard && senderName.trim() && senderPhone.trim() && senderCityId) setSenderEditing(false);
+      if (!receiverCard && receiverName.trim() && receiverPhone.trim() && receiverCityId) setReceiverEditing(false);
+      if (expandedPackageIndex !== null && !activePackage) {
+        const current = packages[expandedPackageIndex];
+        if (current && String(current.description ?? "").trim() && Number(current.weightGrams) >= 100 && Number.isInteger(Number(current.quantity ?? 1)) && Number(current.quantity ?? 1) >= 1) setExpandedPackageIndex(null);
+      }
+    };
+    // Bubble phase lets Radix process portalled controls before outside-collapse logic.
+    document.addEventListener("pointerdown", handleOutsidePointerDown);
+    return () => document.removeEventListener("pointerdown", handleOutsidePointerDown);
+  }, [senderName, senderPhone, senderCityId, receiverName, receiverPhone, receiverCityId, expandedPackageIndex, packages]);
+
   useEffect(() => {
     if (cities.length === 0) return;
     const prefill = consumePrefill();
@@ -134,8 +181,12 @@ export function CreateShipmentPage() {
       setReceiverAddressCode(code);
       if (cityId) setReceiverCityId(cityId);
     }
-    toast.success(`تم إدراج بيانات ${target === "sender" ? "المرسل" : "المستلم"} من الرمز المختصر`);
-  }, [consumePrefill, cities]);
+    toast.success(
+      t("createShipmentPage.prefillInsertedToast", {
+        target: target === "sender" ? t("quickLookup.sender") : t("quickLookup.receiver"),
+      })
+    );
+  }, [consumePrefill, cities, t]);
 
   const selectedCarrierCode = selectedQuote?.carrierCode ?? carriers.find((item) => item.id === selectedQuote?.carrierId)?.code;
 
@@ -150,7 +201,7 @@ export function CreateShipmentPage() {
     if (!selectedCarrierCode) {
       setCarrierSchema(null);
       setCarrierFieldValues({});
-      setCarrierSchemaError("تعذّر تحديد رمز شركة الشحن للتحقق من متطلباتها. حدّث الأسعار أو اختر ناقلًا آخر.");
+      setCarrierSchemaError(t("createShipmentPage.errors.missingCarrierCode"));
       setCarrierSchemaLoading(false);
       return;
     }
@@ -163,11 +214,11 @@ export function CreateShipmentPage() {
       .catch((error) => {
         if (!active) return;
         setCarrierSchema(null);
-        setCarrierSchemaError(error instanceof ApiClientError ? error.message : "تعذّر تحميل الحقول الخاصة بالناقل");
+        setCarrierSchemaError(error instanceof ApiClientError ? error.message : t("createShipmentPage.errors.loadCarrierFieldsFailed"));
       })
       .finally(() => { if (active) setCarrierSchemaLoading(false); });
     return () => { active = false; };
-  }, [selectedCarrierCode]);
+  }, [selectedCarrierCode, selectedQuote, t]);
 
   const carrierFields = carrierSchema?.customFields ?? [];
   const requiredCarrierFieldsMissing = carrierFields.some((field) => {
@@ -202,20 +253,6 @@ export function CreateShipmentPage() {
     (sum, p) => sum + (Number(p.quantity) || 1),
     0
   );
-  // The client specification uses cm and a volumetric divisor of 5000.
-  // The backend remains authoritative for the final chargeable weight and price.
-  const hasPartialDimensions = packages.some((p) => {
-    const rawDimensions = [p.length, p.width, p.height];
-    const entered = rawDimensions.some(
-      (value) => value !== undefined && value !== null
-    );
-    if (!entered) return false;
-    return rawDimensions.some((value) => {
-      const dimension = Number(value);
-      return value === undefined || value === null ||
-        !Number.isFinite(dimension) || dimension <= 0;
-    });
-  });
   const invalidPackages = packages.some((p) => {
     const weight = Number(p.weightGrams ?? 0);
     const quantity = Number(p.quantity ?? 1);
@@ -231,7 +268,6 @@ export function CreateShipmentPage() {
     const height = Number(p.height ?? 0);
     if (!(length > 0 && width > 0 && height > 0)) return sum;
     const quantity = Math.max(1, Number(p.quantity ?? 1));
-    // cm³ / 5000 = kg; multiply by 1000 to store/display grams.
     return sum + Math.ceil((length * width * height * 1000) / 5000) * quantity;
   }, 0);
   const estimatedChargeableWeightGrams = Math.max(
@@ -239,14 +275,15 @@ export function CreateShipmentPage() {
     totalVolumetricWeightGrams
   );
 
-  const addPackage = () =>
-    setPackages((p) => [
-      ...p,
-      { weightGrams: 1000, description: "", quantity: 1 },
-    ]);
+  const addPackage = () => {
+    setExpandedPackageIndex(packages.length);
+    setPackages((p) => [...p, { weightGrams: 1000, description: "", quantity: 1 }]);
+  };
 
-  const removePackage = (idx: number) =>
+  const removePackage = (idx: number) => {
     setPackages((p) => p.filter((_, i) => i !== idx));
+    setExpandedPackageIndex((current) => current === idx ? null : current !== null && current > idx ? current - 1 : current);
+  };
 
   const updatePackage = (idx: number, patch: Partial<ShipmentPackage>) =>
     setPackages((p) =>
@@ -259,11 +296,11 @@ export function CreateShipmentPage() {
       setSenderName(c.name ?? "");
       setSenderPhone(c.phone ?? "");
       setSenderAddress(c.address ?? "");
-      // Match city by name
       const city = cities.find(
         (ct) => ct.nameAr === c.city || ct.nameEn === c.city
       );
       if (city) setSenderCityId(city.id);
+      setSenderEditing(false);
     }
   };
 
@@ -277,6 +314,7 @@ export function CreateShipmentPage() {
         (ct) => ct.nameAr === c.city || ct.nameEn === c.city
       );
       if (city) setReceiverCityId(city.id);
+      setReceiverEditing(false);
     }
   };
 
@@ -292,6 +330,7 @@ export function CreateShipmentPage() {
       const city = cities.find((ct) => ct.nameAr === contact.city || ct.nameEn === contact.city);
       if (city) setSenderCityId(city.id);
     }
+    setSenderEditing(false);
     setSenderFlash(true);
     setTimeout(() => setSenderFlash(false), 1500);
   };
@@ -308,6 +347,7 @@ export function CreateShipmentPage() {
       const city = cities.find((ct) => ct.nameAr === contact.city || ct.nameEn === contact.city);
       if (city) setReceiverCityId(city.id);
     }
+    setReceiverEditing(false);
     setReceiverFlash(true);
     setTimeout(() => setReceiverFlash(false), 1500);
   };
@@ -320,26 +360,22 @@ export function CreateShipmentPage() {
     if (params.destCityId) setReceiverCityId(String(params.destCityId));
     if (params.weightKg) {
       const kg = Number(params.weightKg);
-      setPackages([{ weightGrams: Math.round(kg * 1000), description: "طرد", quantity: 1 }]);
+      setPackages([{ weightGrams: Math.round(kg * 1000), description: t("dashboard.quoteWidget.parcelDefaultDesc"), quantity: 1 }]);
     }
     if (params.deliveryScope) setDeliveryScope(params.deliveryScope as "BRANCH" | "DOOR");
-  }, [cities]);
+  }, [cities, t]);
 
   const handleQuote = async () => {
     if (!senderCityId || !receiverCityId) {
-      toast.error("الرجاء تحديد مدينتي الإرسال والاستلام");
+      toast.error(t("createShipmentPage.errors.selectOriginAndDestCities"));
       return;
     }
     if (packages.length === 0 || invalidPackages) {
-      toast.error("تحقق من وزن كل قطعة (100 غرام على الأقل)، والكمية الصحيحة، ووصف المحتويات");
-      return;
-    }
-    if (hasPartialDimensions) {
-      toast.error("أكمل الطول والعرض والارتفاع لكل قطعة أو اترك الأبعاد فارغة بالكامل");
+      toast.error(t("createShipmentPage.errors.invalidPackagesCheck"));
       return;
     }
     if (paymentMode === "COD" && (!Number.isFinite(Number(codAmount)) || Number(codAmount) <= 0)) {
-      toast.error("أدخل مبلغ تحصيل COD أكبر من صفر");
+      toast.error(t("createShipmentPage.errors.enterPositiveCodAmount"));
       return;
     }
     setQuoting(true);
@@ -361,7 +397,7 @@ export function CreateShipmentPage() {
           ...(Number(p.length ?? 0) > 0 ? { length: Number(p.length) } : {}),
           ...(Number(p.width ?? 0) > 0 ? { width: Number(p.width) } : {}),
           ...(Number(p.height ?? 0) > 0 ? { height: Number(p.height) } : {}),
-          description: p.description ?? "طرد",
+          description: p.description ?? t("dashboard.quoteWidget.parcelDefaultDesc"),
           quantity: Number(p.quantity ?? 1),
         })),
       } as unknown as CreateShipmentRequest;
@@ -374,13 +410,13 @@ export function CreateShipmentPage() {
       setQuotes(arr);
       if (arr.length > 0) {
         setSelectedQuote(arr[0]);
-        toast.success(`تم العثور على ${arr.length} عرض سعر`);
+        toast.success(t("createShipmentPage.errors.quotesFoundToast", { count: arr.length }));
       } else {
-        toast.info("لا توجد عروض أسعار متاحة لهذا المسار");
+        toast.info(t("createShipmentPage.errors.noQuotesForRoute"));
       }
     } catch (e) {
       toast.error(
-        e instanceof ApiClientError ? e.message : "تعذّر حساب التسعير"
+        e instanceof ApiClientError ? e.message : t("createShipmentPage.errors.calculateQuoteFailed")
       );
     } finally {
       setQuoting(false);
@@ -389,52 +425,47 @@ export function CreateShipmentPage() {
 
   const handleCreate = async () => {
     if (!token) {
-      toast.error("الرجاء تسجيل الدخول أولاً");
+      toast.error(t("common.loginFirst"));
       return;
     }
-    // Restricted-browsing gate: block shipment creation until profile is complete.
     if (isProfileRestricted) {
-      toast.warning("حسابك في وضع التصفح المقيّد — أكمل بيانات ملفك الشخصي أولاً لتفعيل إنشاء الشحنات");
+      toast.warning(t("createShipmentPage.errors.restrictedModeWarning"));
       return;
     }
     if (!receiverName || !receiverPhone) {
-      toast.error("الرجاء إكمال بيانات المستلم");
+      toast.error(t("createShipmentPage.errors.completeReceiverInfo"));
       return;
     }
     if (!senderName || !senderPhone) {
-      toast.error("الرجاء إكمال بيانات المرسل");
+      toast.error(t("createShipmentPage.errors.completeSenderInfo"));
       return;
     }
     if (!selectedQuote) {
-      toast.error("احسب الأسعار واختر عرضاً قبل إنشاء الشحنة");
+      toast.error(t("createShipmentPage.errors.calculateAndSelectQuoteFirst"));
       return;
     }
     if (invalidPackages) {
-      toast.error("تحقق من وزن كل قطعة وكميتها ووصفها قبل إنشاء الشحنة");
+      toast.error(t("createShipmentPage.errors.checkPackagesBeforeCreate"));
       return;
     }
     if (paymentMode === "COD" && (!Number.isFinite(Number(codAmount)) || Number(codAmount) <= 0)) {
-      toast.error("أدخل مبلغ تحصيل COD أكبر من صفر");
+      toast.error(t("createShipmentPage.errors.enterPositiveCodAmount"));
       return;
     }
     if (!legalAcknowledged) {
-      toast.error("يجب الإقرار بصحة بيانات الشحنة والموافقة على سياسة الوزن الزائد");
-      return;
-    }
-    if (hasPartialDimensions) {
-      toast.error("أكمل أبعاد القطع أو اتركها فارغة بالكامل قبل إنشاء الشحنة");
+      toast.error(t("createShipmentPage.errors.mustAcknowledgeLegal"));
       return;
     }
     if (carrierSchemaLoading || carrierSchemaError) {
-      toast.error("تعذّر التحقق من الحقول المطلوبة للناقل. حدّث إعدادات الناقل أو حاول مجددًا قبل الإصدار.");
+      toast.error(t("createShipmentPage.errors.carrierSchemaVerifyFailed"));
       return;
     }
     if (requiredCarrierFieldsMissing) {
-      toast.error("أكمل جميع الحقول الإلزامية الخاصة بشركة الشحن المحددة");
+      toast.error(t("createShipmentPage.errors.completeRequiredCarrierFields"));
       return;
     }
     if (invalidCarrierFields.length > 0) {
-      toast.error("تحقق من نطاق القيم أو تنسيق الحقول الإضافية الخاصة بالناقل");
+      toast.error(t("createShipmentPage.errors.invalidCarrierFieldValues"));
       return;
     }
     setCreating(true);
@@ -469,7 +500,6 @@ export function CreateShipmentPage() {
             : undefined,
         notes,
         carrierFields: Object.keys(carrierFieldValues).length ? carrierFieldValues : undefined,
-        // NEW: delivery scope (BRANCH/DOOR) + declared value passed as carrierFields hint
         ...(deliveryScope === "BRANCH" ? { carrierFields: { ...carrierFieldValues, deliveryScope: "BRANCH" } } : {}),
         ...(declaredValue && Number(declaredValue) > 0 ? { declaredValue: Number(declaredValue), declaredValueHal: Math.round(Number(declaredValue) * 100) } : {}),
         packages: packages.map((p) => ({
@@ -477,12 +507,11 @@ export function CreateShipmentPage() {
           ...(Number(p.length ?? 0) > 0 ? { length: Number(p.length) } : {}),
           ...(Number(p.width ?? 0) > 0 ? { width: Number(p.width) } : {}),
           ...(Number(p.height ?? 0) > 0 ? { height: Number(p.height) } : {}),
-          description: p.description ?? "طرد",
+          description: p.description ?? t("dashboard.quoteWidget.parcelDefaultDesc"),
           quantity: Number(p.quantity ?? 1),
         })),
         weightGrams: totalWeightGrams,
         pieces: totalPieces,
-        // Pricing (from selected quote — halalas)
         price: selectedQuote ? halToSar(selectedQuote.totalHal) : undefined,
         totalHal: selectedQuote?.totalHal,
         shippingPriceHal: selectedQuote?.shippingPriceHal,
@@ -490,11 +519,9 @@ export function CreateShipmentPage() {
         currency: "SAR",
       };
       const shipment = await shipmentsApi.create(token, payload);
-      toast.success("تم إنشاء الشحنة بنجاح — يمكنك معاينة البوليصة وطباعتها");
-      // NEW: open AWB waybill modal automatically instead of navigating away
+      toast.success(t("createShipmentPage.errors.shipmentCreatedSuccess"));
       setAwbShipment(shipment);
       setAwbOpen(true);
-      // Invalidate cached lists so the new shipment appears in dashboard
       import("@/lib/api/swrCache").then(({ invalidateSwr }) => {
         if (token) {
           invalidateSwr(`shipments:${token}`);
@@ -506,7 +533,7 @@ export function CreateShipmentPage() {
       });
     } catch (e) {
       toast.error(
-        e instanceof ApiClientError ? e.message : "تعذّر إنشاء الشحنة"
+        e instanceof ApiClientError ? e.message : t("createShipmentPage.errors.createShipmentFailed")
       );
     } finally {
       setCreating(false);
@@ -517,25 +544,39 @@ export function CreateShipmentPage() {
     <div className="space-y-6">
       <BackButton onClick={() => navigate("shipments")} />
       <PageHeader
-        title="إنشاء شحنة جديدة"
-        description="أدخل بيانات الشحنة واحصل على تسعير فوري من كافة الناقلين."
+        title={t("createShipmentPage.title")}
+        description={t("createShipmentPage.description")}
       />
 
       {/* Restricted-browsing guidance card */}
       <ProfileRestrictionAlert />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-5">
         {/* Left: form */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-3 sm:space-y-5">
           {/* SENDER */}
-          <Card className={cn("transition-all", senderFlash && "ring-2 ring-emerald-500/50 border-emerald-400")}>
-            <CardHeader className="pb-3">
+          <Card data-shipment-edit-panel="sender" className={cn("transition-all", senderFlash && "ring-2 ring-emerald-500/50 border-emerald-400")}>
+            <CardHeader className="px-3 pb-2 pt-3 sm:px-6 sm:pb-3 sm:pt-6">
               <CardTitle className="text-base flex items-center gap-2">
                 <Send className="h-4 w-4 text-primary" />
-                بيانات المرسل
+                {t("createShipmentPage.senderSectionTitle")}
               </CardTitle>
+              {!senderEditing && senderName.trim() && senderPhone.trim() && senderCityId && (
+                <Button type="button" size="sm" variant="ghost" className="h-8 gap-1.5 text-xs text-primary" onClick={() => setSenderEditing(true)}>
+                  <Pencil className="h-3.5 w-3.5" /> {locale === "en" ? "Edit" : "تعديل"}
+                </Button>
+              )}
             </CardHeader>
-            <CardContent className="space-y-4">
+            {!senderEditing && senderName.trim() && senderPhone.trim() && senderCityId ? (
+              <CardContent className="pt-0">
+                <button type="button" onClick={() => setSenderEditing(true)} className="group flex w-full flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-emerald-200/80 bg-emerald-50/60 px-3 py-2.5 text-start transition-colors hover:bg-emerald-50 dark:border-emerald-900/60 dark:bg-emerald-950/20">
+                  <span className="flex min-w-0 items-center gap-2 text-sm font-semibold"><UserRound className="h-4 w-4 shrink-0 text-emerald-700" /> <span className="truncate">{senderName}</span></span>
+                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><Phone className="h-3.5 w-3.5" /><bdi dir="ltr">{senderPhone}</bdi></span>
+                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><MapPin className="h-3.5 w-3.5" />{cities.find((c) => c.id === senderCityId)?.[locale === "en" ? "nameEn" : "nameAr"] || "—"}</span>
+                  <span className="ms-auto inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700"><Pencil className="h-3 w-3" />{locale === "en" ? "Edit details" : "تعديل البيانات"}</span>
+                </button>
+              </CardContent>
+            ) : <CardContent className="space-y-3 p-3 sm:space-y-4 sm:p-6">
               {/* NEW: SPL short-code lookup */}
               <QuickCodeLookup
                 token={token}
@@ -545,13 +586,13 @@ export function CreateShipmentPage() {
               {contacts.length > 0 && (
                 <div className="space-y-2">
                   <Label className="text-xs text-muted-foreground">
-                    اختيار سريع من دفتر العناوين
+                    {t("createShipmentPage.quickSelectFromAddressBook")}
                   </Label>
                   <Select onValueChange={fillSender}>
                     <SelectTrigger>
-                      <SelectValue placeholder="اختر مرسلاً محفوظاً" />
+                      <SelectValue placeholder={t("createShipmentPage.selectSavedSender")} />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent data-shipment-select-content="true">
                       {contacts
                         .filter(
                           (c) =>
@@ -569,17 +610,17 @@ export function CreateShipmentPage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-2">
-                  <Label>اسم المرسل *</Label>
+                  <Label>{t("createShipmentPage.senderNameLabel")}</Label>
                   <Input
                     value={senderName}
                     onChange={(e) => setSenderName(e.target.value)}
-                    placeholder="مثال: متجر الأمل"
+                    placeholder={t("createShipmentPage.senderNamePlaceholder")}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>جوال المرسل *</Label>
+                  <Label>{t("createShipmentPage.senderPhoneLabel")}</Label>
                   <Input
                     value={senderPhone}
                     onChange={(e) => setSenderPhone(e.target.value)}
@@ -588,41 +629,57 @@ export function CreateShipmentPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>مدينة الإرسال *</Label>
+                  <Label>{t("createShipmentPage.senderCityLabel")}</Label>
                   <Select
                     value={senderCityId}
                     onValueChange={setSenderCityId}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="اختر المدينة" />
+                      <SelectValue placeholder={t("createShipmentPage.selectCityPlaceholder")} />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent data-shipment-select-content="true">
                       {cities.map((c) => (
                         <SelectItem key={c.id} value={c.id}>
-                          {c.nameAr} — {c.regionAr}
+                          {locale === "en"
+                            ? `${c.nameEn || c.nameAr}${c.regionEn || c.regionAr ? ` — ${c.regionEn || c.regionAr}` : ""}`
+                            : `${c.nameAr} — ${c.regionAr}`}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>عنوان المرسل</Label>
-                  <Input value={senderAddress} onChange={(e) => setSenderAddress(e.target.value)} placeholder="الحي، الشارع" />
-                  {senderAddressCode && <p className="text-[11px] text-emerald-700">تم الجلب بالرمز: <span dir="ltr" className="font-mono">{senderAddressCode}</span></p>}
+                  <Label>{t("createShipmentPage.senderAddressLabel")}</Label>
+                  <Input value={senderAddress} onChange={(e) => setSenderAddress(e.target.value)} placeholder={t("createShipmentPage.addressPlaceholder")} />
+                  {senderAddressCode && <p className="text-[11px] text-emerald-700">{t("createShipmentPage.fetchedByCode")} <span dir="ltr" className="font-mono">{senderAddressCode}</span></p>}
                 </div>
               </div>
-            </CardContent>
+            </CardContent>}
           </Card>
 
           {/* RECEIVER */}
-          <Card className={cn("transition-all", receiverFlash && "ring-2 ring-emerald-500/50 border-emerald-400")}>
-            <CardHeader className="pb-3">
+          <Card data-shipment-edit-panel="receiver" className={cn("transition-all", receiverFlash && "ring-2 ring-emerald-500/50 border-emerald-400")}>
+            <CardHeader className="px-3 pb-2 pt-3 sm:px-6 sm:pb-3 sm:pt-6">
               <CardTitle className="text-base flex items-center gap-2">
                 <Package className="h-4 w-4 text-primary" />
-                بيانات المستلم
+                {t("createShipmentPage.receiverSectionTitle")}
               </CardTitle>
+              {!receiverEditing && receiverName.trim() && receiverPhone.trim() && receiverCityId && (
+                <Button type="button" size="sm" variant="ghost" className="h-8 gap-1.5 text-xs text-primary" onClick={() => setReceiverEditing(true)}>
+                  <Pencil className="h-3.5 w-3.5" /> {locale === "en" ? "Edit" : "تعديل"}
+                </Button>
+              )}
             </CardHeader>
-            <CardContent className="space-y-4">
+            {!receiverEditing && receiverName.trim() && receiverPhone.trim() && receiverCityId ? (
+              <CardContent className="pt-0">
+                <button type="button" onClick={() => setReceiverEditing(true)} className="group flex w-full flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-sky-200/80 bg-sky-50/60 px-3 py-2.5 text-start transition-colors hover:bg-sky-50 dark:border-sky-900/60 dark:bg-sky-950/20">
+                  <span className="flex min-w-0 items-center gap-2 text-sm font-semibold"><UserRound className="h-4 w-4 shrink-0 text-sky-700" /> <span className="truncate">{receiverName}</span></span>
+                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><Phone className="h-3.5 w-3.5" /><bdi dir="ltr">{receiverPhone}</bdi></span>
+                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><MapPin className="h-3.5 w-3.5" />{cities.find((c) => c.id === receiverCityId)?.[locale === "en" ? "nameEn" : "nameAr"] || "—"}</span>
+                  <span className="ms-auto inline-flex items-center gap-1 text-[11px] font-medium text-sky-700"><Pencil className="h-3 w-3" />{locale === "en" ? "Edit details" : "تعديل البيانات"}</span>
+                </button>
+              </CardContent>
+            ) : <CardContent className="space-y-3 p-3 sm:space-y-4 sm:p-6">
               {/* NEW: SPL short-code lookup */}
               <QuickCodeLookup
                 token={token}
@@ -632,13 +689,13 @@ export function CreateShipmentPage() {
               {contacts.length > 0 && (
                 <div className="space-y-2">
                   <Label className="text-xs text-muted-foreground">
-                    اختيار سريع من دفتر العناوين
+                    {t("createShipmentPage.quickSelectFromAddressBook")}
                   </Label>
                   <Select onValueChange={fillReceiver}>
                     <SelectTrigger>
-                      <SelectValue placeholder="اختر مستلماً محفوظاً" />
+                      <SelectValue placeholder={t("createShipmentPage.selectSavedReceiver")} />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent data-shipment-select-content="true">
                       {contacts
                         .filter(
                           (c) =>
@@ -656,17 +713,17 @@ export function CreateShipmentPage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-2">
-                  <Label>اسم المستلم *</Label>
+                  <Label>{t("createShipmentPage.receiverNameLabel")}</Label>
                   <Input
                     value={receiverName}
                     onChange={(e) => setReceiverName(e.target.value)}
-                    placeholder="مثال: شركة النور"
+                    placeholder={t("createShipmentPage.receiverNamePlaceholder")}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>جوال المستلم *</Label>
+                  <Label>{t("createShipmentPage.receiverPhoneLabel")}</Label>
                   <Input
                     value={receiverPhone}
                     onChange={(e) => setReceiverPhone(e.target.value)}
@@ -675,36 +732,38 @@ export function CreateShipmentPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>مدينة الاستلام *</Label>
+                  <Label>{t("createShipmentPage.receiverCityLabel")}</Label>
                   <Select
                     value={receiverCityId}
                     onValueChange={setReceiverCityId}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="اختر المدينة" />
+                      <SelectValue placeholder={t("createShipmentPage.selectCityPlaceholder")} />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent data-shipment-select-content="true">
                       {cities.map((c) => (
                         <SelectItem key={c.id} value={c.id}>
-                          {c.nameAr} — {c.regionAr}
+                          {locale === "en"
+                            ? `${c.nameEn || c.nameAr}${c.regionEn || c.regionAr ? ` — ${c.regionEn || c.regionAr}` : ""}`
+                            : `${c.nameAr} — ${c.regionAr}`}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>عنوان المستلم</Label>
-                  <Input value={receiverAddress} onChange={(e) => setReceiverAddress(e.target.value)} placeholder="الحي، الشارع" />
-                  {receiverAddressCode && <p className="text-[11px] text-emerald-700">تم الجلب بالرمز: <span dir="ltr" className="font-mono">{receiverAddressCode}</span></p>}
+                  <Label>{t("createShipmentPage.receiverAddressLabel")}</Label>
+                  <Input value={receiverAddress} onChange={(e) => setReceiverAddress(e.target.value)} placeholder={t("createShipmentPage.addressPlaceholder")} />
+                  {receiverAddressCode && <p className="text-[11px] text-emerald-700">{t("createShipmentPage.fetchedByCode")} <span dir="ltr" className="font-mono">{receiverAddressCode}</span></p>}
                 </div>
               </div>
-            </CardContent>
+            </CardContent>}
           </Card>
 
           {/* PACKAGES */}
           <Card>
             <CardHeader className="pb-3 flex flex-row items-center justify-between">
-              <CardTitle className="text-base">القطع</CardTitle>
+              <CardTitle className="text-base">{t("createShipmentPage.packagesSectionTitle")}</CardTitle>
               <Button
                 type="button"
                 size="sm"
@@ -713,17 +772,25 @@ export function CreateShipmentPage() {
                 onClick={addPackage}
               >
                 <Plus className="h-4 w-4" />
-                إضافة قطعة
+                {t("createShipmentPage.addPackageBtn")}
               </Button>
             </CardHeader>
             <CardContent className="space-y-3">
               {packages.map((p, i) => (
-                <div
-                  key={i}
-                  className="relative grid grid-cols-1 sm:grid-cols-12 gap-2 items-end rounded-lg border border-border p-3 bg-muted/20"
-                >
+                <div key={i} data-package-editor={i} className="space-y-2">
+                  {expandedPackageIndex !== i && String(p.description ?? "").trim() && Number(p.weightGrams) >= 100 && Number.isInteger(Number(p.quantity ?? 1)) && Number(p.quantity ?? 1) >= 1 ? (
+                    <div className="flex items-center gap-1 rounded-xl border border-border bg-card px-2 py-2 shadow-sm transition-all hover:border-primary/40">
+                      <button type="button" onClick={() => setExpandedPackageIndex(i)} className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-2 rounded-lg px-1 py-0.5 text-start">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><Package className="h-4 w-4" /></span>
+                        <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{p.description}</span><span className="mt-0.5 block text-[11px] text-muted-foreground">{locale === "en" ? `Package ${i + 1}` : `القطعة ${i + 1}`} · {p.quantity ?? 1} × {(Number(p.weightGrams) / 1000).toFixed(2)} {t("common.kg")}{Number(p.length) > 0 && Number(p.width) > 0 && Number(p.height) > 0 ? ` · ${p.length} × ${p.width} × ${p.height} ${locale === "en" ? "cm" : "سم"}` : ""}</span></span>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground"><Weight className="h-3 w-3" />{((Number(p.weightGrams) * Number(p.quantity ?? 1)) / 1000).toFixed(2)} {t("common.kg")}</span>
+                        <Pencil className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      </button>
+                      {packages.length > 1 && <button type="button" onClick={() => removePackage(i)} className="rounded-md p-2 text-destructive transition-colors hover:bg-destructive/10" aria-label={t("createShipmentPage.removePackageAria")}><Trash2 className="h-4 w-4" /></button>}
+                    </div>
+                  ) : <div className="relative grid grid-cols-1 sm:grid-cols-12 gap-2 items-end rounded-xl border border-primary/20 bg-muted/20 p-2.5 sm:p-3 shadow-sm">
                   <div className="sm:col-span-3 space-y-1">
-                    <Label className="text-xs">الوزن (كجم) *</Label>
+                    <Label className="text-xs">{t("createShipmentPage.weightKgLabel")}</Label>
                     <Input
                       type="number"
                       min="0.1"
@@ -739,7 +806,7 @@ export function CreateShipmentPage() {
                     />
                   </div>
                   <div className="sm:col-span-2 space-y-1">
-                    <Label className="text-xs">الكمية</Label>
+                    <Label className="text-xs">{t("createShipmentPage.quantityLabel")}</Label>
                     <Input
                       type="number"
                       min="1"
@@ -752,13 +819,13 @@ export function CreateShipmentPage() {
                     />
                   </div>
                   <div className="sm:col-span-5 space-y-1">
-                    <Label className="text-xs">وصف القطعة *</Label>
+                    <Label className="text-xs">{t("createShipmentPage.packageDescLabel")}</Label>
                     <Input
                       value={p.description ?? ""}
                       onChange={(e) =>
                         updatePackage(i, { description: e.target.value })
                       }
-                      placeholder="مثال: ملابس، كتب، إلكترونيات"
+                      placeholder={t("createShipmentPage.packageDescPlaceholder")}
                     />
                   </div>
                   <div className="sm:col-span-2 flex justify-end">
@@ -767,14 +834,14 @@ export function CreateShipmentPage() {
                         type="button"
                         onClick={() => removePackage(i)}
                         className="p-2 rounded-lg text-destructive hover:bg-destructive/10 transition-colors"
-                        aria-label="حذف القطعة"
+                        aria-label={t("createShipmentPage.removePackageAria")}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
                     )}
                   </div>
                   <div className="sm:col-span-4 space-y-1">
-                    <Label className="text-xs">الطول (سم)</Label>
+                    <Label className="text-xs">{t("createShipmentPage.lengthCmLabel")}</Label>
                     <Input
                       type="number"
                       min="0"
@@ -786,11 +853,11 @@ export function CreateShipmentPage() {
                         })
                       }
                       dir="ltr"
-                      placeholder="اختياري"
+                      placeholder={t("common.optional")}
                     />
                   </div>
                   <div className="sm:col-span-4 space-y-1">
-                    <Label className="text-xs">العرض (سم)</Label>
+                    <Label className="text-xs">{t("createShipmentPage.widthCmLabel")}</Label>
                     <Input
                       type="number"
                       min="0"
@@ -802,11 +869,11 @@ export function CreateShipmentPage() {
                         })
                       }
                       dir="ltr"
-                      placeholder="اختياري"
+                      placeholder={t("common.optional")}
                     />
                   </div>
                   <div className="sm:col-span-4 space-y-1">
-                    <Label className="text-xs">الارتفاع (سم)</Label>
+                    <Label className="text-xs">{t("createShipmentPage.heightCmLabel")}</Label>
                     <Input
                       type="number"
                       min="0"
@@ -818,43 +885,39 @@ export function CreateShipmentPage() {
                         })
                       }
                       dir="ltr"
-                      placeholder="اختياري"
+                      placeholder={t("common.optional")}
                     />
                   </div>
+                  </div>}
                 </div>
               ))}
-              {hasPartialDimensions && (
-                <p className="text-xs text-destructive" role="alert">
-                  يجب إدخال الطول والعرض والارتفاع معاً لكل قطعة تريد احتساب وزنها الحجمي.
-                </p>
-              )}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 rounded-xl bg-muted/40 p-3 text-sm">
-                <WeightSummary label="عدد القطع" value={`${totalPieces} قطعة`} />
-                <WeightSummary label="الوزن الفعلي" value={`${(totalWeightGrams / 1000).toFixed(2)} كجم`} />
-                <WeightSummary label="الوزن الحجمي التقديري" value={`${(totalVolumetricWeightGrams / 1000).toFixed(2)} كجم`} />
-                <WeightSummary label="الوزن الأعلى التقديري" value={`${(estimatedChargeableWeightGrams / 1000).toFixed(2)} كجم`} />
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 rounded-xl border border-border bg-muted/30 p-3 text-sm">
+                <WeightSummary label={t("createShipmentPage.piecesCountSummary")} value={t("createShipmentPage.piecesUnit", { count: totalPieces })} />
+                <WeightSummary label={t("createShipmentPage.actualWeightSummary")} value={`${(totalWeightGrams / 1000).toFixed(2)} ${t("common.kg")}`} />
+                <WeightSummary label={t("createShipmentPage.volumetricWeightSummary")} value={`${(totalVolumetricWeightGrams / 1000).toFixed(2)} ${t("common.kg")}`} />
+                <WeightSummary label={t("createShipmentPage.chargeableWeightSummary")} value={`${(estimatedChargeableWeightGrams / 1000).toFixed(2)} ${t("common.kg")}`} />
               </div>
               <p className="text-[11px] text-muted-foreground">
-                الوزن الحجمي التقديري = الطول × العرض × الارتفاع ÷ 5000 (الأبعاد بالسم). الوزن النهائي المعتمد والسعر يصدران من تسعير الناقل عبر الخادم، وقد تختلف قاعدة الوزن حسب شركة الشحن.
+                {t("createShipmentPage.volumetricDisclaimer")}
               </p>
             </CardContent>
           </Card>
 
           {/* PAYMENT + DELIVERY SCOPE + DECLARED VALUE */}
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">طريقة الدفع والتسليم</CardTitle>
+            <CardHeader className="px-3 pb-2 pt-3 sm:px-6 sm:pb-3 sm:pt-6">
+              <CardTitle className="text-base">{t("createShipmentPage.paymentAndDeliveryTitle")}</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3 p-3 sm:space-y-4 sm:p-6">
               {/* NEW: delivery scope (BRANCH vs DOOR) */}
               <div className="space-y-2">
-                <Label className="text-xs font-medium">نطاق التوصيل</Label>
+                <Label className="text-xs font-medium">{t("createShipmentPage.deliveryScopeLabel")}</Label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setDeliveryScope("BRANCH")}
                     className={cn(
-                      "flex items-center gap-2 rounded-lg border-2 p-3 text-right transition-all",
+                      "flex items-center gap-2 rounded-lg border-2 p-3 text-start transition-all",
                       deliveryScope === "BRANCH"
                         ? "border-emerald-400 bg-emerald-50/50"
                         : "border-border hover:border-emerald-200"
@@ -862,15 +925,15 @@ export function CreateShipmentPage() {
                   >
                     <Store className={cn("h-5 w-5", deliveryScope === "BRANCH" ? "text-emerald-600" : "text-muted-foreground")} />
                     <div>
-                      <p className="text-sm font-semibold">استلام وتسليم من الفرع</p>
-                      <p className="text-[10px] text-muted-foreground">رسوم أقل — وفّر 5 ر.س</p>
+                      <p className="text-sm font-semibold">{t("createShipmentPage.branchDeliveryTitle")}</p>
+                      <p className="text-[10px] text-muted-foreground">{t("createShipmentPage.branchDeliveryDesc")}</p>
                     </div>
                   </button>
                   <button
                     type="button"
                     onClick={() => setDeliveryScope("DOOR")}
                     className={cn(
-                      "flex items-center gap-2 rounded-lg border-2 p-3 text-right transition-all",
+                      "flex items-center gap-2 rounded-lg border-2 p-3 text-start transition-all",
                       deliveryScope === "DOOR"
                         ? "border-emerald-400 bg-emerald-50/50"
                         : "border-border hover:border-emerald-200"
@@ -878,8 +941,8 @@ export function CreateShipmentPage() {
                   >
                     <Truck className={cn("h-5 w-5", deliveryScope === "DOOR" ? "text-emerald-600" : "text-muted-foreground")} />
                     <div>
-                      <p className="text-sm font-semibold">توصيل لباب المنزل</p>
-                      <p className="text-[10px] text-muted-foreground">توصيل كامل من الباب للباب</p>
+                      <p className="text-sm font-semibold">{t("createShipmentPage.doorDeliveryTitle")}</p>
+                      <p className="text-[10px] text-muted-foreground">{t("createShipmentPage.doorDeliveryDesc")}</p>
                     </div>
                   </button>
                 </div>
@@ -904,9 +967,9 @@ export function CreateShipmentPage() {
                     className="mt-1"
                   />
                   <div>
-                    <p className="text-sm font-semibold">مدفوع مسبقاً</p>
+                    <p className="text-sm font-semibold">{t("createShipmentPage.prepaidTitle")}</p>
                     <p className="text-[11px] text-muted-foreground">
-                      يُخصم من المحفظة عند التأكيد
+                      {t("createShipmentPage.prepaidDesc")}
                     </p>
                   </div>
                 </label>
@@ -920,16 +983,16 @@ export function CreateShipmentPage() {
                 >
                   <RadioGroupItem value="COD" id="cod" className="mt-1" />
                   <div>
-                    <p className="text-sm font-semibold">الدفع عند الاستلام</p>
+                    <p className="text-sm font-semibold">{t("createShipmentPage.codTitle")}</p>
                     <p className="text-[11px] text-muted-foreground">
-                      يجمعه المندوب من المستلم
+                      {t("createShipmentPage.codDesc")}
                     </p>
                   </div>
                 </label>
               </RadioGroup>
               {paymentMode === "COD" && (
                 <div className="space-y-2">
-                  <Label>مبلغ التحصيل (ر.س)</Label>
+                  <Label>{t("createShipmentPage.codAmountLabel")}</Label>
                   <Input
                     type="number"
                     value={codAmount}
@@ -942,7 +1005,7 @@ export function CreateShipmentPage() {
               {/* NEW: declared value (estimated goods value for insurance) */}
               <div className="space-y-2">
                 <Label htmlFor="declared-value" className="text-xs font-medium">
-                  القيمة التقديرية للبضاعة (ر.س) — اختياري
+                  {t("createShipmentPage.declaredValueLabel")}
                 </Label>
                 <Input
                   id="declared-value"
@@ -951,11 +1014,11 @@ export function CreateShipmentPage() {
                   step="0.01"
                   value={declaredValue}
                   onChange={(e) => setDeclaredValue(e.target.value)}
-                  placeholder="مثال: 500"
+                  placeholder={t("createShipmentPage.declaredValuePlaceholder")}
                   dir="ltr"
                 />
                 <p className="text-[10px] text-muted-foreground">
-                  تُستخدم لحساب التأمين على البضاعة في حال تطلب الناقل ذلك.
+                  {t("createShipmentPage.declaredValueHint")}
                 </p>
               </div>
               <div className="flex items-start gap-3 rounded-xl border border-border bg-muted/30 p-3">
@@ -966,15 +1029,15 @@ export function CreateShipmentPage() {
                   className="mt-0.5"
                 />
                 <label htmlFor="legal-acknowledgement" className="text-xs leading-6 text-muted-foreground cursor-pointer">
-                  أقر بصحة بيانات الشحنة والأوزان والأبعاد، وأنها لا تحتوي على مواد محظورة، وأوافق على مراجعة أي فرق وزن يثبته الناقل وفق سياسة المنصة.
+                  {t("createShipmentPage.legalAcknowledgement")}
                 </label>
               </div>
               <div className="space-y-2">
-                <Label>ملاحظات إضافية (اختياري)</Label>
+                <Label>{t("createShipmentPage.notesLabel")}</Label>
                 <Input
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="أي تعليمات خاصة بالشحنة"
+                  placeholder={t("createShipmentPage.notesPlaceholder")}
                 />
               </div>
             </CardContent>
@@ -984,10 +1047,10 @@ export function CreateShipmentPage() {
         {/* Right: quote + actions */}
         <div className="lg:col-span-1 space-y-4 lg:sticky lg:top-20 lg:self-start">
           <Card>
-            <CardHeader className="pb-3">
+            <CardHeader className="px-3 pb-2 pt-3 sm:px-6 sm:pb-3 sm:pt-6">
               <CardTitle className="text-base flex items-center gap-2">
                 <Calculator className="h-4 w-4 text-primary" />
-                التسعير
+                {t("createShipmentPage.pricingCardTitle")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -1002,7 +1065,7 @@ export function CreateShipmentPage() {
                 ) : (
                   <Calculator className="h-4 w-4" />
                 )}
-                احصل على عروض الأسعار
+                {t("createShipmentPage.getQuotesBtn")}
               </Button>
 
               {quotes.length > 0 ? (
@@ -1016,7 +1079,7 @@ export function CreateShipmentPage() {
                         key={i}
                         type="button"
                         onClick={() => setSelectedQuote(q)}
-                        className={`w-full text-right rounded-xl border-2 p-3 transition-all ${
+                        className={`w-full text-start rounded-xl border-2 p-3 transition-all ${
                           selected
                             ? "border-primary bg-primary/5"
                             : "border-border hover:border-primary/30"
@@ -1024,7 +1087,9 @@ export function CreateShipmentPage() {
                       >
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-semibold">
-                            {q.carrierNameAr ?? q.carrierName ?? "ناقل"}
+                            {locale === "en"
+                              ? q.carrierNameEn ?? q.carrierName ?? q.carrierNameAr ?? t("dashboard.quoteWidget.carrierFallback")
+                              : q.carrierNameAr ?? q.carrierName ?? t("dashboard.quoteWidget.carrierFallback")}
                           </span>
                           <span
                             className="text-base font-bold text-primary"
@@ -1032,12 +1097,12 @@ export function CreateShipmentPage() {
                           >
                             {q.totalHal
                               ? formatSAR(halToSar(q.totalHal))
-                              : "—"}
+                              : t("common.none")}
                           </span>
                         </div>
                         <div className="flex items-center justify-between mt-1">
                           <span className="text-[11px] text-muted-foreground">
-                            {q.serviceCode ?? "خدمة قياسية"}
+                            {q.serviceCode ?? t("dashboard.quoteWidget.standardService")}
                           </span>
                           {q.etaTextAr && (
                             <span className="text-[11px] text-muted-foreground">
@@ -1047,9 +1112,11 @@ export function CreateShipmentPage() {
                         </div>
                         {(q.weightBreakdown?.chargeableGrams ?? q.chargeableGrams) != null && (
                           <p className="mt-2 text-[11px] text-muted-foreground">
-                            الوزن المعتمد لدى التسعير: {(
-                              Number(q.weightBreakdown?.chargeableGrams ?? q.chargeableGrams) / 1000
-                            ).toFixed(2)} كجم
+                            {t("createShipmentPage.chargeableWeightAtQuote", {
+                              weight: (
+                                Number(q.weightBreakdown?.chargeableGrams ?? q.chargeableGrams) / 1000
+                              ).toFixed(2),
+                            })}
                           </p>
                         )}
                       </button>
@@ -1058,36 +1125,36 @@ export function CreateShipmentPage() {
                 </div>
               ) : (
                 <p className="text-xs text-muted-foreground text-center py-2">
-                  اضغط على زر التسعير لعرض عروض الأسعار المتاحة.
+                  {t("createShipmentPage.clickPricingHint")}
                 </p>
               )}
 
               {selectedQuote && (
                 <div className="border-t border-border pt-3 space-y-3">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-semibold">حقول الناقل الإضافية</p>
-                    {carrierSchemaLoading ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : carrierSchemaError ? <Badge variant="destructive">تعذر التحميل</Badge> : <Badge variant="outline">{carrierSchema?.customFields.length ?? 0} حقل</Badge>}
+                    <p className="text-sm font-semibold">{t("createShipmentPage.additionalCarrierFieldsTitle")}</p>
+                    {carrierSchemaLoading ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : carrierSchemaError ? <Badge variant="destructive">{t("createShipmentPage.failedToLoadBadge")}</Badge> : <Badge variant="outline">{t("createShipmentPage.fieldsCountBadge", { count: carrierSchema?.customFields.length ?? 0 })}</Badge>}
                   </div>
-                  {carrierSchemaLoading ? <p className="text-xs text-muted-foreground">جارٍ تحميل متطلبات الناقل…</p> : carrierSchemaError ? (
-                    <p className="rounded-lg bg-destructive/10 p-2 text-xs leading-5 text-destructive">لم يتم التحقق من الحقول الديناميكية. يجب أن يوفر الخادم GET /api/v1/public/carriers/{"{code}"}/capabilities قبل إصدار هذا الناقل.</p>
+                  {carrierSchemaLoading ? <p className="text-xs text-muted-foreground">{t("createShipmentPage.loadingCarrierRequirements")}</p> : carrierSchemaError ? (
+                    <p className="rounded-lg bg-destructive/10 p-2 text-xs leading-5 text-destructive">{t("createShipmentPage.carrierCapabilitiesEndpointError")}</p>
                   ) : carrierSchema?.customFields.length ? carrierSchema.customFields.map((field) => (
                     <div key={field.key} className="space-y-1.5">
-                      <Label className="text-xs">{field.labelAr}{field.required ? " *" : ""}</Label>
+                      <Label className="text-xs">{locale === "en" ? field.labelEn || field.labelAr : field.labelAr}{field.required ? " *" : ""}</Label>
                       {field.type === "SELECT" ? (
                         <select value={String(carrierFieldValues[field.key] ?? "")} onChange={(event) => setCarrierFieldValues((current) => ({ ...current, [field.key]: event.target.value }))} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
-                          <option value="">اختر قيمة</option>
+                          <option value="">{t("createShipmentPage.selectValuePlaceholder")}</option>
                           {(field.options ?? []).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                         </select>
                       ) : field.type === "BOOLEAN" ? (
-                        <label className="flex items-center gap-2 rounded-md border border-input p-2 text-xs"><Checkbox checked={carrierFieldValues[field.key] === true} onCheckedChange={(checked) => setCarrierFieldValues((current) => ({ ...current, [field.key]: checked === true }))} /> نعم</label>
+                        <label className="flex items-center gap-2 rounded-md border border-input p-2 text-xs"><Checkbox checked={carrierFieldValues[field.key] === true} onCheckedChange={(checked) => setCarrierFieldValues((current) => ({ ...current, [field.key]: checked === true }))} /> {t("common.yes")}</label>
                       ) : (
-                        <Input type={field.type === "NUMBER" ? "number" : field.type === "DATE" ? "date" : "text"} min={field.min} max={field.max} pattern={field.pattern} required={field.required} placeholder={field.placeholder ?? "أدخل القيمة"} value={String(carrierFieldValues[field.key] ?? "")} onChange={(event) => setCarrierFieldValues((current) => ({ ...current, [field.key]: field.type === "NUMBER" ? (event.target.value === "" ? "" : Number(event.target.value)) : event.target.value }))} />
+                        <Input type={field.type === "NUMBER" ? "number" : field.type === "DATE" ? "date" : "text"} min={field.min} max={field.max} pattern={field.pattern} required={field.required} placeholder={field.placeholder ?? t("createShipmentPage.enterValuePlaceholder")} value={String(carrierFieldValues[field.key] ?? "")} onChange={(event) => setCarrierFieldValues((current) => ({ ...current, [field.key]: field.type === "NUMBER" ? (event.target.value === "" ? "" : Number(event.target.value)) : event.target.value }))} />
                       )}
                       {field.helpTextAr && <p className="text-[10px] text-muted-foreground">{field.helpTextAr}</p>}
                     </div>
-                  )) : <p className="text-xs text-muted-foreground">لا توجد حقول إضافية مطلوبة لهذا الناقل.</p>}
-                  {invalidCarrierFields.length > 0 && <p role="alert" className="rounded-lg bg-destructive/10 p-2 text-xs text-destructive">تحقق من القيم التالية: {invalidCarrierFields.map((field) => field.labelAr).join("، ")}</p>}
-                  {requiredCarrierFieldsMissing && <p className="text-xs text-amber-700">أكمل الحقول الإلزامية قبل إصدار البوليصة.</p>}
+                  )) : <p className="text-xs text-muted-foreground">{t("createShipmentPage.noAdditionalFieldsRequired")}</p>}
+                  {invalidCarrierFields.length > 0 && <p role="alert" className="rounded-lg bg-destructive/10 p-2 text-xs text-destructive">{t("createShipmentPage.checkFollowingValuesError", { fields: invalidCarrierFields.map((field) => locale === "en" ? field.labelEn || field.labelAr : field.labelAr).join(", ") })}</p>}
+                  {requiredCarrierFieldsMissing && <p className="text-xs text-amber-700">{t("createShipmentPage.completeRequiredFieldsHint")}</p>}
                 </div>
               )}
             </CardContent>
@@ -1097,14 +1164,14 @@ export function CreateShipmentPage() {
             size="lg"
             className="w-full gap-2 h-12 text-base font-semibold"
             onClick={handleCreate}
-            disabled={creating || !selectedQuote || !legalAcknowledged || hasPartialDimensions || invalidPackages || carrierSchemaLoading || !!carrierSchemaError || requiredCarrierFieldsMissing || invalidCarrierFields.length > 0 || (paymentMode === "COD" && Number(codAmount) <= 0)}
+            disabled={creating || !selectedQuote || !legalAcknowledged || invalidPackages || carrierSchemaLoading || !!carrierSchemaError || requiredCarrierFieldsMissing || invalidCarrierFields.length > 0 || (paymentMode === "COD" && Number(codAmount) <= 0)}
           >
             {creating ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <CheckCircle2 className="h-4 w-4" />
             )}
-            إنشاء الشحنة
+            {t("createShipmentPage.createShipmentBtn")}
             <ArrowRight className="h-4 w-4 rtl-flip" />
           </Button>
         </div>
@@ -1116,7 +1183,6 @@ export function CreateShipmentPage() {
         onOpenChange={(v) => {
           setAwbOpen(v);
           if (!v) {
-            // When closed, navigate to shipment details
             if (awbShipment) {
               navigate("shipment-details", { id: awbShipment.id });
             }

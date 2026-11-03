@@ -15,7 +15,6 @@ import {
   Download,
   Apple,
   Smartphone,
-  Building2,
   Copy,
   Check,
   ShieldCheck,
@@ -64,17 +63,18 @@ import {
 } from "@/components/ui/select";
 import {
   formatSAR,
-  timeAgo,
   formatDateTime,
   halToSar,
 } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useTranslation, tStatic } from "@/i18n";
 import type { WalletTransaction } from "@/types/api";
 
 export function WalletPage() {
   const { token } = useAuth();
   const { wallet, transactions, loading, error, reload } = useWallet(token);
   const isProfileRestricted = useIsProfileRestricted();
+  const { t } = useTranslation();
 
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState("");
@@ -107,8 +107,8 @@ export function WalletPage() {
   }, [token]);
 
   const companyBankInfo = {
-    bankName: "مصرف الراجحي",
-    accountName: "شركة مسار إكس للخدمات اللوجستية",
+    bankName: t("walletPage.companyBankName"),
+    accountName: t("walletPage.companyAccountName"),
     iban: "SA0080000000000000000000",
     swiftCode: "RJHISARI",
   };
@@ -117,10 +117,10 @@ export function WalletPage() {
     try {
       await navigator.clipboard.writeText(companyBankInfo.iban);
       setCopiedIban(true);
-      toast.success("تم نسخ رقم الآيبان");
+      toast.success(t("bankAccounts.ibanCopiedToast"));
       setTimeout(() => setCopiedIban(false), 2000);
     } catch {
-      toast.error("تعذّر النسخ");
+      toast.error(t("common.copyFailed"));
     }
   };
 
@@ -176,27 +176,25 @@ export function WalletPage() {
   const handleTopup = async () => {
     if (!token) return;
     if (isProfileRestricted) {
-      toast.warning("حسابك في وضع التصفح المقيّد — أكمل بيانات ملفك الشخصي أولاً لإجراء عمليات الشحن");
+      toast.warning(t("walletPage.errors.restrictedTopupWarning"));
       return;
     }
     const value = Number(amount);
     if (!value || value < 1) {
-      toast.error("الرجاء إدخال مبلغ صحيح");
+      toast.error(t("walletPage.errors.enterValidAmount"));
       return;
     }
-    // Bank transfers require password confirmation before submission,
-    // because they move real funds from the customer's bank to Masar X.
     if (method === "bank_transfer") {
       if (bankAccounts.length === 0) {
-        toast.error("أضف حساباً بنكياً محفوظاً من بطاقة الحسابات البنكية بالأسفل أولاً");
+        toast.error(t("walletPage.errors.addSavedBankAccountFirst"));
         return;
       }
       if (!selectedBankAccountId) {
-        toast.error("اختر الحساب البنكي المحفوظ الذي ستحوّل منه");
+        toast.error(t("walletPage.errors.selectSourceBankAccountError"));
         return;
       }
       if (!referenceNumber.trim()) {
-        toast.error("أدخل الرقم المرجعي للحوالة البنكية");
+        toast.error(t("walletPage.errors.enterTransferRefError"));
         return;
       }
       setPasswordAction("topup-bank");
@@ -214,14 +212,20 @@ export function WalletPage() {
       if (res.paymentUrl) {
         window.location.href = res.paymentUrl;
       } else {
-        toast.success(`تم إنشاء طلب الشحن عبر ${cardMethod === "apple_pay" ? "Apple Pay" : cardMethod === "stc_pay" ? "STC Pay" : "بطاقة مدى/فيزا"}`);
+        const methodName =
+          cardMethod === "apple_pay"
+            ? t("walletPage.applePay")
+            : cardMethod === "stc_pay"
+              ? t("walletPage.stcPay")
+              : t("walletPage.madaVisaTitle");
+        toast.success(t("walletPage.errors.topupRequestCreatedToast", { method: methodName }));
         setOpen(false);
         setAmount("");
         reload();
       }
     } catch (e) {
       toast.error(
-        e instanceof ApiClientError ? e.message : "تعذّر إتمام عملية الشحن"
+        e instanceof ApiClientError ? e.message : t("walletPage.errors.topupFailed")
       );
     } finally {
       setBusy(false);
@@ -241,8 +245,8 @@ export function WalletPage() {
         currency: "SAR",
         paymentMethod: "bank_transfer",
       });
-      toast.success("تم تسجيل طلب الحوالة البنكية — سيُعتمد خلال 24 ساعة عمل");
-      toast.info("للتسريع، أرسل إيصال الحوالة عبر واتساب للمالية: wa.me/9665XXXXXXXX");
+      toast.success(t("walletPage.errors.bankTransferSubmittedToast"));
+      toast.info(t("walletPage.errors.bankTransferWhatsappHint"));
       setOpen(false);
       setAmount("");
       setReferenceNumber("");
@@ -251,7 +255,7 @@ export function WalletPage() {
       reload();
     } catch (e) {
       toast.error(
-        e instanceof ApiClientError ? e.message : "تعذّر تسجيل طلب الحوالة"
+        e instanceof ApiClientError ? e.message : t("walletPage.errors.bankTransferSubmitFailed")
       );
     } finally {
       setBusy(false);
@@ -261,11 +265,11 @@ export function WalletPage() {
   /** Open the withdraw dialog (button is always visible on the balance card). */
   const openWithdraw = () => {
     if (isProfileRestricted) {
-      toast.warning("حسابك في وضع التصفح المقيّد — أكمل بيانات ملفك الشخصي أولاً لإجراء عمليات السحب");
+      toast.warning(t("walletPage.errors.restrictedWithdrawWarning"));
       return;
     }
     if (balance <= 0) {
-      toast.error("لا يوجد رصيد متاح للسحب");
+      toast.error(t("walletPage.errors.noBalanceToWithdraw"));
       return;
     }
     setWithdrawAmount("");
@@ -278,15 +282,15 @@ export function WalletPage() {
     if (!token) return;
     const value = Number(withdrawAmount);
     if (!value || value < 1) {
-      toast.error("أدخل مبلغ سحب صحيح");
+      toast.error(t("walletPage.errors.enterValidWithdrawAmount"));
       return;
     }
     if (value > balance) {
-      toast.error("المبلغ يتجاوز الرصيد المتاح");
+      toast.error(t("walletPage.errors.amountExceedsBalance"));
       return;
     }
     if (!withdrawBankAccountId) {
-      toast.error("اختر الحساب البنكي الذي تريد السحب إليه");
+      toast.error(t("walletPage.errors.selectReceivingBankAccount"));
       return;
     }
     setWithdrawBusy(true);
@@ -296,14 +300,14 @@ export function WalletPage() {
         amountHal: Math.round(value * 100),
         bankAccountId: withdrawBankAccountId,
       });
-      toast.success("تم تنفيذ طلب السحب — سيصل إلى حسابك خلال 1-2 يوم عمل");
+      toast.success(t("walletPage.errors.withdrawSuccessToast"));
       setWithdrawOpen(false);
       setWithdrawAmount("");
       setPasswordAction(null);
       reload();
     } catch (e) {
       toast.error(
-        e instanceof ApiClientError ? e.message : "تعذّر تنفيذ طلب السحب"
+        e instanceof ApiClientError ? e.message : t("walletPage.errors.withdrawFailed")
       );
     } finally {
       setWithdrawBusy(false);
@@ -322,23 +326,76 @@ export function WalletPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="المحفظة الرقمية"
-        description="إدارة رصيدك ومعاملاتك المالية."
-        action={
-          <Dialog open={open} onOpenChange={setOpen}>
+        title={t("walletPage.title")}
+        description={t("walletPage.description")}
+      />
+
+      {/* Restricted-browsing guidance card */}
+      <ProfileRestrictionAlert />
+
+      {/* Premium wallet balance card */}
+      <div className="w-full">
+        <Card className="relative isolate overflow-hidden rounded-3xl border-0 bg-[linear-gradient(125deg,#082A2C_0%,#0D3B3E_52%,#145B50_100%)] text-white shadow-[0_18px_48px_-18px_rgba(8,42,44,0.55)]">
+          <div aria-hidden="true" className="pointer-events-none absolute -end-16 -top-24 h-64 w-64 rounded-full bg-emerald-300/10 blur-3xl" />
+          <div aria-hidden="true" className="pointer-events-none absolute -bottom-28 -start-16 h-64 w-64 rounded-full bg-teal-200/10 blur-3xl" />
+          <CardContent className="relative z-10 p-4 sm:p-6">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="mb-2 flex items-center gap-2">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/10 shadow-inner">
+                    <WalletIcon className="h-[18px] w-[18px] text-emerald-100" />
+                  </span>
+                  <p className="text-sm font-semibold tracking-wide text-white/80">{t("walletPage.availableBalance")}</p>
+                </div>
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1" dir="ltr">
+                  <span className="text-3xl font-extrabold tracking-tight tabular-nums sm:text-4xl">{formatSAR(balance, { withSymbol: false })}</span>
+                  <span className="text-sm font-semibold text-emerald-100/75">{t("common.sar")}</span>
+                </div>
+                <p className="mt-1 text-[10px] font-medium text-white/55">
+                  {t("walletPage.accountStatusLine", { status: wallet?.negativeBalance ? t("walletPage.statusDebit") : t("walletPage.statusActive") })}
+                </p>
+              </div>
+              <Badge className="shrink-0 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[10px] font-semibold text-white shadow-none hover:bg-white/10">{t("common.sarCode")}</Badge>
+            </div>
+
+            <div className="my-3 h-px bg-gradient-to-r from-white/25 via-white/10 to-transparent" />
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="grid flex-1 grid-cols-2 gap-2 sm:max-w-[430px] sm:gap-4">
+                <div className="min-w-0 rounded-xl border border-white/10 bg-white/[0.06] px-2.5 py-2">
+                  <div className="mb-1 flex items-center gap-1.5 text-white/65">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-amber-300/15 text-amber-200"><Clock className="h-3 w-3" /></span>
+                    <span className="truncate text-[10px] font-medium">{t("walletPage.pendingStat")}</span>
+                  </div>
+                  <p className="truncate text-sm font-bold tabular-nums text-white sm:text-base" dir="ltr">
+                    {formatSAR(pending, { withSymbol: false })}<span className="ms-1 text-[9px] font-medium text-white/55">{t("common.sar")}</span>
+                  </p>
+                </div>
+                <div className="min-w-0 rounded-xl border border-white/10 bg-white/[0.06] px-2.5 py-2">
+                  <div className="mb-1 flex items-center gap-1.5 text-white/65">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-emerald-300/15 text-emerald-200"><TrendingUp className="h-3 w-3" /></span>
+                    <span className="truncate text-[10px] font-medium">{t("walletPage.codCollectedStat")}</span>
+                  </div>
+                  <p className="truncate text-sm font-bold tabular-nums text-white sm:text-base" dir="ltr">
+                    {formatSAR(codCollected, { withSymbol: false })}<span className="ms-1 text-[9px] font-medium text-white/55">{t("common.sar")}</span>
+                  </p>
+                </div>
+              </div>
+              <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto sm:min-w-[260px]">
+                <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button className="gap-1.5">
+              <Button className="h-9 min-w-0 flex-1 gap-1.5 rounded-xl border border-white/15 bg-white px-2 text-xs font-semibold text-[#0D3B3E] shadow-sm hover:bg-emerald-50 sm:h-10 sm:px-4 sm:text-sm">
                 <Plus className="h-4 w-4" />
-                شحن المحفظة
+                {t("walletPage.topupWalletBtn")}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>شحن المحفظة</DialogTitle>
+                <DialogTitle>{t("walletPage.topupDialogTitle")}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-2">
                 <div className="space-y-2">
-                  <Label>المبلغ (ر.س)</Label>
+                  <Label>{t("walletPage.amountSarLabel")}</Label>
                   <Input
                     type="number"
                     min="1"
@@ -355,7 +412,7 @@ export function WalletPage() {
                         onClick={() => setAmount(String(v))}
                         className="rounded-full border border-border bg-muted/40 px-3 py-1 text-xs hover:border-primary/40 hover:bg-primary/5"
                       >
-                        {v} ر.س
+                        {v} {t("common.sar")}
                       </button>
                     ))}
                   </div>
@@ -378,9 +435,9 @@ export function WalletPage() {
                     <RadioGroupItem value="card" id="card" />
                     <CreditCard className="h-5 w-5 text-primary" />
                     <div>
-                      <p className="text-sm font-medium">بطاقة مدى / فيزا</p>
+                      <p className="text-sm font-medium">{t("walletPage.madaVisaTitle")}</p>
                       <p className="text-[11px] text-muted-foreground">
-                        شحن فوري عبر بوابة Moyasar
+                        {t("walletPage.madaVisaDesc")}
                       </p>
                     </div>
                   </label>
@@ -395,9 +452,9 @@ export function WalletPage() {
                     <RadioGroupItem value="bank_transfer" id="bank" />
                     <Banknote className="h-5 w-5 text-primary" />
                     <div>
-                      <p className="text-sm font-medium">حوالة بنكية</p>
+                      <p className="text-sm font-medium">{t("walletPage.bankTransferTitle")}</p>
                       <p className="text-[11px] text-muted-foreground">
-                        تُعتمد خلال 24 ساعة
+                        {t("walletPage.bankTransferDesc")}
                       </p>
                     </div>
                   </label>
@@ -407,10 +464,10 @@ export function WalletPage() {
                 {method === "card" && (
                   <div className="grid grid-cols-2 gap-2">
                     {[
-                      { id: "card", label: "بطاقة مدى / فيزا", icon: CreditCard },
-                      { id: "apple_pay", label: "Apple Pay", icon: Apple },
-                      { id: "stc_pay", label: "STC Pay", icon: Smartphone },
-                      { id: "paypal", label: "PayPal", icon: ShieldCheck },
+                      { id: "card", label: t("walletPage.madaVisaTitle"), icon: CreditCard },
+                      { id: "apple_pay", label: t("walletPage.applePay"), icon: Apple },
+                      { id: "stc_pay", label: t("walletPage.stcPay"), icon: Smartphone },
+                      { id: "paypal", label: t("walletPage.paypal"), icon: ShieldCheck },
                     ].map((opt) => {
                       const Icon = opt.icon;
                       const active = cardMethod === (opt.id as typeof cardMethod);
@@ -433,7 +490,7 @@ export function WalletPage() {
                           <Icon className="h-4 w-4" />
                           {opt.label}
                           {isComingSoon && (
-                            <span className="text-[9px] text-amber-600 mr-auto">قريباً</span>
+                            <span className="text-[9px] text-amber-600 ms-auto">{t("common.comingSoon")}</span>
                           )}
                         </button>
                       );
@@ -444,18 +501,18 @@ export function WalletPage() {
                 {/* NEW: bank transfer details — company account + customer saved account + reference */}
                 {method === "bank_transfer" && (
                   <div className="space-y-3 rounded-xl border border-border bg-muted/20 p-3">
-                    <p className="text-xs font-semibold text-foreground">حوّل إلى حساب شركة مسار إكس:</p>
+                    <p className="text-xs font-semibold text-foreground">{t("walletPage.transferToMasarAccount")}</p>
                     <div className="rounded-lg bg-card border border-border p-3 space-y-1.5 text-xs">
                       <div className="flex justify-between gap-2">
-                        <span className="text-muted-foreground">المصرف</span>
+                        <span className="text-muted-foreground">{t("walletPage.bankLabel")}</span>
                         <span className="font-medium text-foreground">{companyBankInfo.bankName}</span>
                       </div>
                       <div className="flex justify-between gap-2">
-                        <span className="text-muted-foreground">اسم المستفيد</span>
+                        <span className="text-muted-foreground">{t("walletPage.beneficiaryNameLabel")}</span>
                         <span className="font-medium text-foreground">{companyBankInfo.accountName}</span>
                       </div>
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-muted-foreground">الآيبان</span>
+                        <span className="text-muted-foreground">{t("walletPage.ibanLabel")}</span>
                         <button
                           type="button"
                           onClick={handleCopyIban}
@@ -471,7 +528,7 @@ export function WalletPage() {
                         </button>
                       </div>
                       <div className="flex justify-between gap-2">
-                        <span className="text-muted-foreground">SWIFT</span>
+                        <span className="text-muted-foreground">{t("walletPage.swiftLabel")}</span>
                         <span className="font-mono text-foreground" dir="ltr">{companyBankInfo.swiftCode}</span>
                       </div>
                     </div>
@@ -479,14 +536,14 @@ export function WalletPage() {
                     {bankAccounts.length === 0 ? (
                       <div className="rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-[11px] text-amber-800 flex items-start gap-2">
                         <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                        لا يوجد حساب بنكي محفوظ لديك. أضف حساباً من بطاقة «الحسابات البنكية المحفوظة» بالأسفل لتسريع الحوالات.
+                        {t("walletPage.noSavedBankAccountAlert")}
                       </div>
                     ) : (
                       <div className="space-y-1.5">
-                        <Label className="text-xs">اختر حسابك المصدر للحوالة</Label>
+                        <Label className="text-xs">{t("walletPage.selectSourceBankAccount")}</Label>
                         <Select value={selectedBankAccountId} onValueChange={setSelectedBankAccountId}>
                           <SelectTrigger className="h-9 text-xs">
-                            <SelectValue placeholder="اختر الحساب المحفوظ" />
+                            <SelectValue placeholder={t("walletPage.selectSavedAccountPlaceholder")} />
                           </SelectTrigger>
                           <SelectContent>
                             {bankAccounts.map((a) => (
@@ -500,17 +557,17 @@ export function WalletPage() {
                     )}
 
                     <div className="space-y-1.5">
-                      <Label htmlFor="bank-ref" className="text-xs">الرقم المرجعي للحوالة *</Label>
+                      <Label htmlFor="bank-ref" className="text-xs">{t("walletPage.transferRefNumberLabel")}</Label>
                       <Input
                         id="bank-ref"
                         value={referenceNumber}
                         onChange={(e) => setReferenceNumber(e.target.value)}
-                        placeholder="مثال: TR-123456789"
+                        placeholder={t("walletPage.transferRefPlaceholder")}
                         dir="ltr"
                         className="h-9 text-xs"
                       />
                       <p className="text-[10px] text-muted-foreground">
-                        سيُطلب تأكيد كلمة المرور قبل تسجيل الحوالة لأمان العملية.
+                        {t("walletPage.passwordRequiredForTransferHint")}
                       </p>
                     </div>
                   </div>
@@ -522,7 +579,7 @@ export function WalletPage() {
                   onClick={() => setOpen(false)}
                   disabled={busy}
                 >
-                  إلغاء
+                  {t("common.cancel")}
                 </Button>
                 <Button
                   onClick={handleTopup}
@@ -530,88 +587,18 @@ export function WalletPage() {
                   className="gap-2"
                 >
                   {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-                  تأكيد الشحن
+                  {t("walletPage.confirmTopupBtn")}
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
-        }
-      />
-
-      {/* Restricted-browsing guidance card */}
-      <ProfileRestrictionAlert />
-
-      {/* Balance + stats cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="md:col-span-2 overflow-hidden bg-brand-gradient text-white border-0 shadow-brand-lg relative">
-          {/* Decorative dotted map */}
-          <div className="absolute inset-0 opacity-[0.08] pointer-events-none" aria-hidden>
-            <svg viewBox="0 0 400 200" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <pattern id="wallet-grid" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
-                  <circle cx="2" cy="2" r="1" fill="white" />
-                </pattern>
-              </defs>
-              <rect width="400" height="200" fill="url(#wallet-grid)" />
-              <g fill="none" stroke="#A3D9A5" strokeWidth="1.5" strokeDasharray="4 6" opacity="0.6">
-                <path d="M40 100 Q150 40 280 90 T380 130" />
-              </g>
-              <g fill="#A3D9A5" opacity="0.8">
-                <circle cx="40" cy="100" r="4" />
-                <circle cx="280" cy="90" r="4" />
-                <circle cx="380" cy="130" r="4" />
-              </g>
-            </svg>
-          </div>
-          <CardContent className="p-6 relative z-10">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/15">
-                  <WalletIcon className="h-4 w-4 text-white" />
-                </div>
-                <p className="text-sm text-white/80 font-medium">الرصيد المتاح</p>
+                <Button size="sm" variant="secondary" className="h-9 min-w-0 flex-1 gap-1.5 rounded-xl border border-white/15 bg-white/10 px-2 text-xs font-semibold text-white shadow-sm hover:bg-white/20 sm:h-10 sm:px-4 sm:text-sm" onClick={openWithdraw} disabled={balance <= 0}>
+                  <ArrowDownToLine className="h-4 w-4 shrink-0" /><span className="truncate">{t("walletPage.withdrawBalanceBtn")}</span>
+                </Button>
               </div>
-              <Badge className="bg-white/15 text-white border-white/20">
-                SAR
-              </Badge>
             </div>
-            <p className="text-4xl font-extrabold tracking-tight" dir="ltr">
-              {formatSAR(balance, { withSymbol: false })}
-              <span className="text-base font-medium text-white/70 ms-1">
-                ر.س
-              </span>
-            </p>
-            <p className="text-xs text-white/70 mt-2">
-              الحساب {wallet?.negativeBalance ? "مدين" : "نشط"} • آخر تحديث: الآن
-            </p>
-            {/* NEW: withdraw button — always visible when there is an available balance */}
-            <Button
-              size="sm"
-              variant="secondary"
-              className="mt-4 gap-1.5 bg-white text-primary hover:bg-white/90"
-              onClick={openWithdraw}
-              disabled={balance <= 0}
-            >
-              <ArrowDownToLine className="h-3.5 w-3.5" />
-              سحب الرصيد
-            </Button>
           </CardContent>
         </Card>
-
-        <StatBox
-          label="قيد التعليق"
-          value={formatSAR(pending, { withSymbol: false })}
-          icon={<Clock className="h-4 w-4" />}
-          color="text-amber-600"
-          bg="bg-amber-50"
-        />
-        <StatBox
-          label="COD محصّل"
-          value={formatSAR(codCollected, { withSymbol: false })}
-          icon={<TrendingUp className="h-4 w-4" />}
-          color="text-emerald-600"
-          bg="bg-emerald-50"
-        />
       </div>
 
       {/* COD info banner */}
@@ -620,10 +607,10 @@ export function WalletPage() {
           <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />
           <div className="flex-1">
             <p className="text-sm font-medium text-foreground">
-              لديك مبالغ COD قيد التحصيل بقيمة {formatSAR(codPending)}
+              {t("walletPage.codPendingBannerTitle", { amount: formatSAR(codPending) })}
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              سيتم إضافتها إلى رصيدك تلقائياً بعد تسليم الشحنات المعنية.
+              {t("walletPage.codPendingBannerDesc")}
             </p>
           </div>
         </div>
@@ -645,20 +632,20 @@ export function WalletPage() {
           <div className="p-4 border-b border-border">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-base font-semibold text-foreground">سجل المعاملات</h2>
-                <p className="text-xs text-muted-foreground mt-1">تصفية السجل حسب الفترة أو حركات الدفع عند الاستلام.</p>
+                <h2 className="text-base font-semibold text-foreground">{t("walletPage.transactionsTitle")}</h2>
+                <p className="text-xs text-muted-foreground mt-1">{t("walletPage.transactionsSubtitle")}</p>
               </div>
               <div className="flex items-center gap-2">
                 <Select value={period} onValueChange={setPeriod}>
                   <SelectTrigger className="sm:w-56">
-                    <SelectValue placeholder="كل الفترات" />
+                    <SelectValue placeholder={t("walletPage.periods.all")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">كل الفترات</SelectItem>
-                    <SelectItem value="today">عمليات اليوم</SelectItem>
-                    <SelectItem value="month">الشهر الحالي</SelectItem>
-                    <SelectItem value="cod">عمليات COD</SelectItem>
-                    <SelectItem value="custom">فترة مخصصة</SelectItem>
+                    <SelectItem value="all">{t("walletPage.periods.all")}</SelectItem>
+                    <SelectItem value="today">{t("walletPage.periods.today")}</SelectItem>
+                    <SelectItem value="month">{t("walletPage.periods.month")}</SelectItem>
+                    <SelectItem value="cod">{t("walletPage.periods.cod")}</SelectItem>
+                    <SelectItem value="custom">{t("walletPage.periods.custom")}</SelectItem>
                   </SelectContent>
                 </Select>
                 {/* NEW: Export/Print button with 31-day limit rule */}
@@ -673,117 +660,121 @@ export function WalletPage() {
             {period === "custom" && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
                 <div className="space-y-1">
-                  <Label htmlFor="wallet-date-from" className="text-xs">من تاريخ</Label>
+                  <Label htmlFor="wallet-date-from" className="text-xs">{t("walletPage.fromDateLabel")}</Label>
                   <Input id="wallet-date-from" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="wallet-date-to" className="text-xs">إلى تاريخ</Label>
+                  <Label htmlFor="wallet-date-to" className="text-xs">{t("walletPage.toDateLabel")}</Label>
                   <Input id="wallet-date-to" type="date" min={dateFrom || undefined} value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
                 </div>
               </div>
             )}
           </div>
           {loading ? (
-            <LoadingState message="جارٍ تحميل المعاملات…" className="py-12" />
+            <LoadingState message={t("walletPage.loadingTransactions")} className="py-12" />
           ) : error ? (
             <ErrorState message={error} onRetry={reload} className="py-12" />
           ) : filteredTransactions.length === 0 ? (
             <EmptyState
-              title={transactions.length === 0 ? "لا توجد معاملات" : "لا توجد معاملات ضمن الفلتر المحدد"}
-              description={transactions.length === 0 ? "ستظهر جميع معاملاتك المالية هنا." : "غيّر الفترة أو امسح الفلاتر لعرض بقية السجل."}
+              title={transactions.length === 0 ? t("walletPage.emptyTransactions") : t("walletPage.emptyTransactionsFiltered")}
+              description={transactions.length === 0 ? t("walletPage.emptyTransactionsDesc") : t("walletPage.emptyTransactionsFilteredDesc")}
               icon={Banknote}
               className="py-12"
             />
           ) : (
             <>
-            <ul className="divide-y divide-border">
-              {paginatedTransactions.map((t) => {
-                const dir = (t.direction ?? "").toUpperCase();
-                const isIn =
-                  dir === "IN" || dir === "CREDIT" || t.direction === "in";
-                const amount = t.amountHal
-                  ? halToSar(t.amountHal)
-                  : (t.amount ?? 0);
-                return (
-                  <li
-                    key={t.id}
-                    className="flex items-center gap-3 p-4 hover:bg-muted/30 transition-colors"
-                  >
-                    <div
-                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
-                        isIn
-                          ? "bg-emerald-50 text-emerald-600"
-                          : "bg-red-50 text-red-600"
-                      }`}
+              <ul className="divide-y divide-border">
+                {paginatedTransactions.map((tx) => {
+                  const dir = (tx.direction ?? "").toUpperCase();
+                  const isIn =
+                    dir === "IN" || dir === "CREDIT" || tx.direction === "in";
+                  const amountVal = tx.amountHal
+                    ? halToSar(tx.amountHal)
+                    : (tx.amount ?? 0);
+                  return (
+                    <li
+                      key={tx.id}
+                      className="flex items-center gap-3 p-4 hover:bg-muted/30 transition-colors"
                     >
-                      {isIn ? (
-                        <ArrowDownLeft className="h-5 w-5" />
-                      ) : (
-                        <ArrowUpRight className="h-5 w-5" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">
-                        {t.description ??
-                          t.descriptionAr ??
-                          labelForType(t.type)}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {formatDateTime(t.createdAt)}
-                        {t.reference ? ` • ${t.reference}` : ""}
-                        {t.status ? ` • ${t.status}` : ""}
-                      </p>
-                    </div>
-                    <div className="text-end shrink-0">
-                      <p
-                        className={`text-sm font-bold tabular-nums ${
-                          isIn ? "text-emerald-600" : "text-red-600"
+                      <div
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
+                          isIn
+                            ? "bg-emerald-50 text-emerald-600"
+                            : "bg-red-50 text-red-600"
                         }`}
-                        dir="ltr"
                       >
-                        {isIn ? "+" : "−"}
-                        {formatSAR(amount, { withSymbol: false })}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {t.balanceAfterHal
-                          ? `رصيد: ${formatSAR(halToSar(t.balanceAfterHal), { withSymbol: false })}`
-                          : t.balanceAfter
-                          ? `رصيد: ${formatSAR(t.balanceAfter, { withSymbol: false })}`
-                          : ""}
-                      </p>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-            {/* NEW: pagination controls for the transactions table */}
-            {txTotalPages > 1 && (
-              <div className="flex items-center justify-center gap-3 py-4 border-t border-border">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={txPrevPage}
-                  disabled={!txHasPrev}
-                  className="gap-1.5"
-                >
-                  <ArrowUpRight className="h-3.5 w-3.5 rtl-flip rotate-180" />
-                  السابق
-                </Button>
-                <span className="text-xs text-muted-foreground tabular-nums">
-                  صفحة {txPage} من {txTotalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={txNextPage}
-                  disabled={!txHasNext}
-                  className="gap-1.5"
-                >
-                  التالي
-                  <ArrowDownLeft className="h-3.5 w-3.5 rtl-flip rotate-180" />
-                </Button>
-              </div>
-            )}
+                        {isIn ? (
+                          <ArrowDownLeft className="h-5 w-5" />
+                        ) : (
+                          <ArrowUpRight className="h-5 w-5" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">
+                          {tx.description ??
+                            tx.descriptionAr ??
+                            labelForType(tx.type)}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {formatDateTime(tx.createdAt)}
+                          {tx.reference ? ` • ${tx.reference}` : ""}
+                          {tx.status ? ` • ${tx.status}` : ""}
+                        </p>
+                      </div>
+                      <div className="text-end shrink-0">
+                        <p
+                          className={`text-sm font-bold tabular-nums ${
+                            isIn ? "text-emerald-600" : "text-red-600"
+                          }`}
+                          dir="ltr"
+                        >
+                          {isIn ? "+" : "−"}
+                          {formatSAR(amountVal, { withSymbol: false })}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {tx.balanceAfterHal
+                            ? t("walletPage.balanceAfterPrefix", {
+                                amount: formatSAR(halToSar(tx.balanceAfterHal), { withSymbol: false }),
+                              })
+                            : tx.balanceAfter
+                            ? t("walletPage.balanceAfterPrefix", {
+                                amount: formatSAR(tx.balanceAfter, { withSymbol: false }),
+                              })
+                            : ""}
+                        </p>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+              {/* NEW: pagination controls for the transactions table */}
+              {txTotalPages > 1 && (
+                <div className="flex items-center justify-center gap-3 py-4 border-t border-border">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={txPrevPage}
+                    disabled={!txHasPrev}
+                    className="gap-1.5"
+                  >
+                    <ArrowUpRight className="h-3.5 w-3.5 rtl-flip rotate-180" />
+                    {t("common.previous")}
+                  </Button>
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {t("common.pageOf", { page: txPage, total: txTotalPages })}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={txNextPage}
+                    disabled={!txHasNext}
+                    className="gap-1.5"
+                  >
+                    {t("common.next")}
+                    <ArrowDownLeft className="h-3.5 w-3.5 rtl-flip rotate-180" />
+                  </Button>
+                </div>
+              )}
             </>
           )}
         </CardContent>
@@ -795,16 +786,16 @@ export function WalletPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
               <ArrowDownToLine className="h-5 w-5 text-primary" />
-              سحب الرصيد
+              {t("walletPage.withdrawDialogTitle")}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-800">
-              الرصيد المتاح للسحب:{" "}
+              {t("walletPage.availableForWithdraw")}{" "}
               <span className="font-bold" dir="ltr">{formatSAR(balance)}</span>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="withdraw-amount">المبلغ المراد سحبه (ر.س)</Label>
+              <Label htmlFor="withdraw-amount">{t("walletPage.withdrawAmountLabel")}</Label>
               <Input
                 id="withdraw-amount"
                 type="number"
@@ -820,21 +811,21 @@ export function WalletPage() {
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 flex items-start gap-2">
                 <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
                 <span>
-                  لا يوجد حساب بنكي محفوظ. أضف حساباً من بطاقة «الحسابات البنكية المحفوظة» بالأعلى لاستلام السحب.
+                  {t("walletPage.noSavedAccountForWithdraw")}
                 </span>
               </div>
             ) : (
               <div className="space-y-2">
-                <Label htmlFor="withdraw-account">الحساب البنكي المستلم</Label>
+                <Label htmlFor="withdraw-account">{t("walletPage.receivingBankAccountLabel")}</Label>
                 <Select value={withdrawBankAccountId} onValueChange={setWithdrawBankAccountId}>
                   <SelectTrigger id="withdraw-account">
-                    <SelectValue placeholder="اختر الحساب المحفوظ" />
+                    <SelectValue placeholder={t("walletPage.selectSavedAccountPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent>
                     {bankAccounts.map((a) => (
                       <SelectItem key={a.id} value={a.id}>
                         {a.bankName} ••{a.iban.slice(-4)}
-                        {a.isDefault ? " (افتراضي)" : ""}
+                        {a.isDefault ? t("walletPage.defaultAccountSuffix") : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -842,21 +833,21 @@ export function WalletPage() {
               </div>
             )}
             <p className="text-[11px] text-muted-foreground">
-              سيُطلب تأكيد كلمة المرور قبل تنفيذ طلب السحب لأمان العملية.
+              {t("walletPage.passwordRequiredForWithdrawHint")}
             </p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setWithdrawOpen(false)} disabled={withdrawBusy}>
-              إلغاء
+              {t("common.cancel")}
             </Button>
             <Button
               onClick={() => {
                 if (Number(withdrawAmount) > balance) {
-                  toast.error("المبلغ يتجاوز الرصيد المتاح");
+                  toast.error(t("walletPage.errors.amountExceedsBalance"));
                   return;
                 }
                 if (!withdrawBankAccountId) {
-                  toast.error("اختر الحساب البنكي المستلم");
+                  toast.error(t("walletPage.errors.selectReceivingAccountShort"));
                   return;
                 }
                 setPasswordAction("withdraw");
@@ -866,7 +857,7 @@ export function WalletPage() {
               className="gap-2"
             >
               {withdrawBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-              تأكيد طلب السحب
+              {t("walletPage.confirmWithdrawRequestBtn")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -882,10 +873,10 @@ export function WalletPage() {
         token={token}
         actionDescription={
           passwordAction === "withdraw"
-            ? "تأكيد طلب سحب الرصيد إلى حسابك البنكي المحفوظ."
+            ? t("walletPage.passwordConfirmWithdrawDesc")
             : passwordAction === "topup-bank"
-              ? "تأكيد طلب شحن المحفظة عبر حوالة بنكية."
-              : "تأكيد العملية المالية."
+              ? t("walletPage.passwordConfirmTopupBankDesc")
+              : t("walletPage.passwordConfirmDefaultDesc")
         }
         onConfirmed={handlePasswordConfirmed}
       />
@@ -893,54 +884,24 @@ export function WalletPage() {
   );
 }
 
-function StatBox({
-  label,
-  value,
-  icon,
-  color,
-  bg,
-}: {
-  label: string;
-  value: string;
-  icon: React.ReactNode;
-  color: string;
-  bg: string;
-}) {
-  return (
-    <Card>
-      <CardContent className="p-4">
-        <div
-          className={`flex h-9 w-9 items-center justify-center rounded-lg ${bg} ${color} mb-3`}
-        >
-          {icon}
-        </div>
-        <p className="text-[11px] text-muted-foreground mb-1">{label}</p>
-        <p className="text-lg font-bold text-foreground" dir="ltr">
-          {value}
-        </p>
-      </CardContent>
-    </Card>
-  );
-}
-
 function labelForType(type?: string): string {
-  if (!type) return "معاملة";
+  if (!type) return tStatic("dashboard.recentTransactions.types.default");
   const t = type.toLowerCase();
   switch (t) {
     case "topup":
-      return "شحن المحفظة";
+      return tStatic("dashboard.recentTransactions.types.topup");
     case "shipment":
-      return "دفع شحنة";
+      return tStatic("dashboard.recentTransactions.types.shipment");
     case "refund":
-      return "استرداد";
+      return tStatic("dashboard.recentTransactions.types.refund");
     case "cod":
-      return "تحصيل COD";
+      return tStatic("dashboard.recentTransactions.types.cod");
     case "fee":
-      return "رسوم";
+      return tStatic("dashboard.recentTransactions.types.fee");
     case "adjustment":
-      return "تسوية";
+      return tStatic("dashboard.recentTransactions.types.adjustment");
     default:
-      return "معاملة";
+      return tStatic("dashboard.recentTransactions.types.default");
   }
 }
 
@@ -949,28 +910,30 @@ function labelForType(type?: string): string {
  * Shows: total topups, total shipping spend, pending COD, weight surcharges.
  * ==========================================================================*/
 function SummaryCards({ transactions }: { transactions: WalletTransaction[] }) {
+  const { t } = useTranslation();
+
   const totalTopups = transactions
-    .filter((t) => (t.type ?? "").toLowerCase() === "topup" && (t.direction ?? "").toUpperCase() === "IN")
-    .reduce((sum, t) => sum + (t.amountHal ? halToSar(t.amountHal) : t.amount ?? 0), 0);
+    .filter((tx) => (tx.type ?? "").toLowerCase() === "topup" && (tx.direction ?? "").toUpperCase() === "IN")
+    .reduce((sum, tx) => sum + (tx.amountHal ? halToSar(tx.amountHal) : tx.amount ?? 0), 0);
   const topupsCount = transactions.filter(
-    (t) => (t.type ?? "").toLowerCase() === "topup" && (t.direction ?? "").toUpperCase() === "IN"
+    (tx) => (tx.type ?? "").toLowerCase() === "topup" && (tx.direction ?? "").toUpperCase() === "IN"
   ).length;
 
   const totalShipping = transactions
-    .filter((t) => (t.type ?? "").toLowerCase() === "shipment" && (t.direction ?? "").toUpperCase() === "OUT")
-    .reduce((sum, t) => sum + (t.amountHal ? halToSar(t.amountHal) : t.amount ?? 0), 0);
+    .filter((tx) => (tx.type ?? "").toLowerCase() === "shipment" && (tx.direction ?? "").toUpperCase() === "OUT")
+    .reduce((sum, tx) => sum + (tx.amountHal ? halToSar(tx.amountHal) : tx.amount ?? 0), 0);
 
   const pendingCOD = transactions
-    .filter((t) => (t.type ?? "").toLowerCase() === "cod" && (t.direction ?? "").toUpperCase() === "IN")
-    .reduce((sum, t) => sum + (t.amountHal ? halToSar(t.amountHal) : t.amount ?? 0), 0);
+    .filter((tx) => (tx.type ?? "").toLowerCase() === "cod" && (tx.direction ?? "").toUpperCase() === "IN")
+    .reduce((sum, tx) => sum + (tx.amountHal ? halToSar(tx.amountHal) : tx.amount ?? 0), 0);
 
   const weightSurcharges = transactions
-    .filter((t) => (t.type ?? "").toLowerCase() === "fee" || (t.type ?? "").toLowerCase() === "adjustment")
-    .reduce((sum, t) => sum + (t.amountHal ? halToSar(t.amountHal) : t.amount ?? 0), 0);
+    .filter((tx) => (tx.type ?? "").toLowerCase() === "fee" || (tx.type ?? "").toLowerCase() === "adjustment")
+    .reduce((sum, tx) => sum + (tx.amountHal ? halToSar(tx.amountHal) : tx.amount ?? 0), 0);
 
   const cards = [
     {
-      label: "إجمالي الحوالات المشحونة",
+      label: t("walletPage.summary.totalTopups"),
       value: totalTopups,
       count: topupsCount,
       icon: ArrowDownLeft,
@@ -978,21 +941,21 @@ function SummaryCards({ transactions }: { transactions: WalletTransaction[] }) {
       color: "text-emerald-600",
     },
     {
-      label: "مصروفات الشحنات",
+      label: t("walletPage.summary.shippingExpenses"),
       value: totalShipping,
       icon: ArrowUpRight,
       bg: "bg-blue-50",
       color: "text-blue-600",
     },
     {
-      label: "مبالغ COD معلّقة",
+      label: t("walletPage.summary.pendingCod"),
       value: pendingCOD,
       icon: Clock,
       bg: "bg-amber-50",
       color: "text-amber-600",
     },
     {
-      label: "خصومات الوزن الزائد",
+      label: t("walletPage.summary.overweightDeductions"),
       value: weightSurcharges,
       icon: TrendingUp,
       bg: "bg-rose-50",
@@ -1013,10 +976,10 @@ function SummaryCards({ transactions }: { transactions: WalletTransaction[] }) {
               <p className="text-[11px] text-muted-foreground mb-1 truncate">{c.label}</p>
               <p className="text-lg font-bold text-foreground tabular-nums" dir="ltr">
                 {formatSAR(c.value, { withSymbol: false })}
-                <span className="text-xs font-normal text-muted-foreground ms-1">ر.س</span>
+                <span className="text-xs font-normal text-muted-foreground ms-1">{t("common.sar")}</span>
               </p>
               {"count" in c && c.count !== undefined && (
-                <p className="text-[10px] text-muted-foreground mt-0.5">{c.count} عملية</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{t("walletPage.summary.operationsCount", { count: c.count })}</p>
               )}
             </CardContent>
           </Card>
@@ -1043,6 +1006,7 @@ function PrintReportButton({
   dateTo: string;
 }) {
   const [showLimitDialog, setShowLimitDialog] = useState(false);
+  const { t, locale } = useTranslation();
 
   const getPeriodDays = (): number => {
     if (period === "today") return 1;
@@ -1054,16 +1018,15 @@ function PrintReportButton({
       return diff;
     }
     if (period === "all") {
-      // For "all", check actual transaction span
       if (transactions.length === 0) return 0;
       const dates = transactions
-        .map((t) => t.createdAt ? new Date(t.createdAt).getTime() : 0)
+        .map((tx) => tx.createdAt ? new Date(tx.createdAt).getTime() : 0)
         .filter(Boolean);
       if (dates.length === 0) return 0;
       const span = Math.ceil((Math.max(...dates) - Math.min(...dates)) / 86400000) + 1;
       return span;
     }
-    return 31; // default safe
+    return 31;
   };
 
   const handleExport = () => {
@@ -1072,16 +1035,24 @@ function PrintReportButton({
       setShowLimitDialog(true);
       return;
     }
-    // Export CSV
-    const headers = ["التاريخ", "النوع", "الاتجاه", "المبلغ", "الوصف", "المرجع", "الرصيد بعد"];
-    const rows = transactions.map((t) => [
-      t.createdAt ? new Date(t.createdAt).toLocaleString("ar-SA") : "",
-      t.type ?? "",
-      t.direction ?? "",
-      String(t.amountHal ? halToSar(t.amountHal) : t.amount ?? 0),
-      t.description ?? t.descriptionAr ?? "",
-      t.reference ?? "",
-      String(t.balanceAfterHal ? halToSar(t.balanceAfterHal) : t.balanceAfter ?? 0),
+    const dateLocale = locale === "en" ? "en-US" : "ar-SA";
+    const headers = [
+      t("walletPage.csvHeaders.date"),
+      t("walletPage.csvHeaders.type"),
+      t("walletPage.csvHeaders.direction"),
+      t("walletPage.csvHeaders.amount"),
+      t("walletPage.csvHeaders.description"),
+      t("walletPage.csvHeaders.reference"),
+      t("walletPage.csvHeaders.balanceAfter"),
+    ];
+    const rows = transactions.map((tx) => [
+      tx.createdAt ? new Date(tx.createdAt).toLocaleString(dateLocale) : "",
+      tx.type ?? "",
+      tx.direction ?? "",
+      String(tx.amountHal ? halToSar(tx.amountHal) : tx.amount ?? 0),
+      tx.description ?? tx.descriptionAr ?? "",
+      tx.reference ?? "",
+      String(tx.balanceAfterHal ? halToSar(tx.balanceAfterHal) : tx.balanceAfter ?? 0),
     ]);
     const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
     const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
@@ -1091,43 +1062,42 @@ function PrintReportButton({
     a.download = `masarx-wallet-report-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success("تم تصدير التقرير (CSV)");
+    toast.success(t("walletPage.reportExportedToast"));
   };
 
   return (
     <>
       <Button size="sm" variant="outline" className="gap-1.5" onClick={handleExport}>
         <Download className="h-3.5 w-3.5" />
-        تصدير
+        {t("common.export")}
       </Button>
       <Dialog open={showLimitDialog} onOpenChange={setShowLimitDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
               <AlertCircle className="h-5 w-5 text-amber-500" />
-              تجاوز حد الطباعة المسموح
+              {t("walletPage.printLimitDialogTitle")}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
-            <p className="text-sm text-foreground">
-              الفترة المحددة تتجاوز <strong>شهراً واحداً (31 يوماً)</strong>.
+            <p className="text-sm font-semibold text-foreground">
+              {t("walletPage.printLimitExceededText")}
             </p>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              لطباعة التقارير المالية لفترات تتجاوز شهراً واحداً (أو التقارير السنوية)،
-              يرجى الضغط هنا للتواصل مع الإدارة لتزويدكم بالتقرير المالي المعتمد.
+              {t("walletPage.printLimitContactAdminDesc")}
             </p>
             <div className="flex items-center gap-2 pt-2">
               <Button
                 className="flex-1 gap-2"
                 onClick={() => {
-                  window.location.href = "mailto:support@masarx.sa?subject=طلب تقرير مالي معتمد";
+                  window.location.href = "mailto:support@masarx.sa?subject=Official%20Financial%20Report%20Request";
                 }}
               >
                 <Receipt className="h-4 w-4" />
-                التواصل مع الإدارة
+                {t("walletPage.contactAdminBtn")}
               </Button>
               <Button variant="outline" onClick={() => setShowLimitDialog(false)}>
-                إغلاق
+                {t("common.close")}
               </Button>
             </div>
           </div>

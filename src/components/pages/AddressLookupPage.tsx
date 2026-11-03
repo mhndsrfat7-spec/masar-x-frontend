@@ -13,12 +13,14 @@ import { addressLookupApi, isDemoMode } from "@/lib/api/services";
 import { ApiClientError } from "@/lib/api/client";
 import { useRouterStore } from "@/store/routerStore";
 import { useShipmentPrefillStore, type ShipmentContactTarget } from "@/store/shipmentPrefillStore";
+import { useTranslation } from "@/i18n";
 import type { ShortCodeLookupResult } from "@/types/api";
 
 export function AddressLookupPage() {
   const { token } = useAuth();
   const navigate = useRouterStore((s) => s.navigate);
   const setPrefill = useShipmentPrefillStore((s) => s.setPrefill);
+  const { t } = useTranslation();
   const [code, setCode] = useState("");
   const [result, setResult] = useState<ShortCodeLookupResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -28,11 +30,11 @@ export function AddressLookupPage() {
     event.preventDefault();
     const normalized = code.trim().toUpperCase();
     if (!normalized) {
-      setError("أدخل العنوان المختصر أو رمز جهة الاتصال أولاً.");
+      setError(t("addressLookupPage.enterCodeFirstError"));
       return;
     }
     if (!token) {
-      setError("انتهت جلسة الدخول. سجّل الدخول ثم أعد المحاولة.");
+      setError(t("addressLookupPage.sessionExpiredError"));
       return;
     }
     setLoading(true);
@@ -41,13 +43,13 @@ export function AddressLookupPage() {
     try {
       const response = await addressLookupApi.lookup(token, normalized);
       setResult(response);
-      toast.success("تم استرجاع بيانات العنوان");
+      toast.success(t("addressLookupPage.addressRetrievedToast"));
     } catch (lookupError) {
       const message = lookupError instanceof ApiClientError
         ? lookupError.message
         : lookupError instanceof Error
           ? lookupError.message
-          : "تعذّر استرجاع العنوان";
+          : t("addressLookupPage.retrieveFailedError");
       setError(message);
     } finally {
       setLoading(false);
@@ -65,8 +67,8 @@ export function AddressLookupPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="جلب العنوان المختصر"
-        description="ابحث باستخدام رمز العنوان الوطني أو المعرّف المختصر لجهة اتصال محفوظة، ثم انقل البيانات إلى نموذج الشحنة دون إعادة إدخالها."
+        title={t("addressLookupPage.title")}
+        description={t("addressLookupPage.description")}
       />
 
       <Card className="overflow-hidden">
@@ -76,8 +78,8 @@ export function AddressLookupPage() {
               <MapPin className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="font-semibold">البحث عن عنوان أو جهة اتصال</h2>
-              <p className="text-xs text-muted-foreground mt-1">أمثلة للمدخلات: SPL Code أو Customer Alias مثل #MX-1024</p>
+              <h2 className="font-semibold">{t("addressLookupPage.cardTitle")}</h2>
+              <p className="text-xs text-muted-foreground mt-1">{t("addressLookupPage.cardSubtitle")}</p>
             </div>
           </div>
         </div>
@@ -88,7 +90,7 @@ export function AddressLookupPage() {
               <Input
                 value={code}
                 onChange={(event) => setCode(event.target.value.toUpperCase())}
-                placeholder="أدخل الرمز المختصر…"
+                placeholder={t("addressLookupPage.inputPlaceholder")}
                 className="h-12 pr-10 font-mono"
                 dir="ltr"
                 autoComplete="off"
@@ -97,14 +99,14 @@ export function AddressLookupPage() {
             </div>
             <Button type="submit" className="h-12 gap-2 sm:min-w-36" disabled={loading}>
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-              جلب البيانات
+              {t("addressLookupPage.fetchDataBtn")}
             </Button>
           </form>
-          {isDemoMode() && <p className="mt-3 rounded-lg bg-amber-500/5 px-3 py-2 text-xs text-amber-700">وضع العرض التجريبي: نتائج البحث من بيانات عينة محلية، وليست خدمة SPL حقيقية.</p>}
+          {isDemoMode() && <p className="mt-3 rounded-lg bg-amber-500/5 px-3 py-2 text-xs text-amber-700">{t("addressLookupPage.demoNotice")}</p>}
           {error && <p role="alert" className="mt-3 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
           <div className="mt-4 flex items-start gap-2 rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
             <ShieldCheck className="h-4 w-4 shrink-0 text-primary" />
-            <p>يتم طلب البيانات من الخادم بعد تسجيل الدخول. لا تُخزّن بيانات العنوان في المتصفح، ويجب أن يطبّق الخادم صلاحيات الوصول وإخفاء البيانات غير المصرّح بها.</p>
+            <p>{t("addressLookupPage.securityNotice")}</p>
           </div>
         </CardContent>
       </Card>
@@ -115,26 +117,26 @@ export function AddressLookupPage() {
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary"><UserRound className="h-5 w-5" /></div>
               <div>
-                <CardTitle className="text-base">بيانات جهة الاتصال</CardTitle>
-                <p className="mt-1 text-xs text-muted-foreground">تم العثور على السجل المرتبط بالرمز {result?.code}</p>
+                <CardTitle className="text-base">{t("addressLookupPage.contactDetailsTitle")}</CardTitle>
+                <p className="mt-1 text-xs text-muted-foreground">{t("addressLookupPage.recordFoundForCode", { code: result?.code })}</p>
               </div>
             </div>
-            <Badge variant="secondary">{result?.source === "SPL" ? "عنوان وطني" : "معرّف جهة اتصال"}</Badge>
+            <Badge variant="secondary">{result?.source === "SPL" ? t("addressLookupPage.nationalAddressBadge") : t("addressLookupPage.contactAliasBadge")}</Badge>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              <Detail label="الاسم" value={contact.name ?? contact.fullName ?? "—"} />
-              <Detail label="رقم الجوال" value={contact.phone ?? "—"} dir="ltr" />
-              <Detail label="المدينة" value={contact.cityName ?? contact.city ?? "—"} />
-              <Detail label="العنوان" value={contact.address ?? "—"} />
-              <Detail label="نوع جهة الاتصال" value={contact.type === "SENDER" ? "مرسل" : contact.type === "RECEIVER" ? "مستلم" : "مرسل ومستلم"} />
-              <Detail label="معرّف السجل" value={contact.id} dir="ltr" />
+              <Detail label={t("addressLookupPage.nameLabel")} value={contact.name ?? contact.fullName ?? t("common.none")} />
+              <Detail label={t("addressLookupPage.phoneLabel")} value={contact.phone ?? t("common.none")} dir="ltr" />
+              <Detail label={t("addressLookupPage.cityLabel")} value={contact.cityName ?? contact.city ?? t("common.none")} />
+              <Detail label={t("addressLookupPage.addressLabel")} value={contact.address ?? t("common.none")} />
+              <Detail label={t("addressLookupPage.contactTypeLabel")} value={contact.type === "SENDER" ? t("addressLookupPage.typeSender") : contact.type === "RECEIVER" ? t("addressLookupPage.typeReceiver") : t("addressLookupPage.typeBoth")} />
+              <Detail label={t("addressLookupPage.recordIdLabel")} value={contact.id} dir="ltr" />
             </div>
             <div className="flex flex-col sm:flex-row gap-2 border-t border-border pt-4">
-              <Button onClick={() => useContact("sender")} className="gap-2 flex-1"><ArrowLeftRight className="h-4 w-4" /> استخدام كمرسل</Button>
-              <Button onClick={() => useContact("receiver")} variant="outline" className="gap-2 flex-1"><ArrowLeftRight className="h-4 w-4" /> استخدام كمستلم</Button>
+              <Button onClick={() => useContact("sender")} className="gap-2 flex-1"><ArrowLeftRight className="h-4 w-4" /> {t("addressLookupPage.useAsSenderBtn")}</Button>
+              <Button onClick={() => useContact("receiver")} variant="outline" className="gap-2 flex-1"><ArrowLeftRight className="h-4 w-4" /> {t("addressLookupPage.useAsReceiverBtn")}</Button>
             </div>
-            <p className="text-[11px] text-muted-foreground flex items-center gap-1.5"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> ستُنقل البيانات مباشرة إلى نموذج إنشاء الشحنة عبر حالة مؤقتة داخل التطبيق.</p>
+            <p className="text-[11px] text-muted-foreground flex items-center gap-1.5"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> {t("addressLookupPage.prefillNote")}</p>
           </CardContent>
         </Card>
       )}

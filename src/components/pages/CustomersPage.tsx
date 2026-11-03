@@ -36,15 +36,16 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { useTranslation } from "@/i18n";
 import type { Customer } from "@/types/api";
 
 /**
  * Customers page — alias for the address book (legacy).
- * For sender/receiver management use the dedicated /address-book page.
  */
 export function CustomersPage() {
   const { token } = useAuth();
   const { list, loading, error, reload } = useCustomers(token);
+  const { t } = useTranslation();
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -70,7 +71,7 @@ export function CustomersPage() {
     e.preventDefault();
     if (!token) return;
     if (!name || !phone) {
-      toast.error("الاسم ورقم الجوال مطلوبان");
+      toast.error(t("addressBookPage.nameAndPhoneRequired"));
       return;
     }
     setCreating(true);
@@ -83,7 +84,7 @@ export function CustomersPage() {
         city,
         address,
       });
-      toast.success("تم إضافة العميل بنجاح");
+      toast.success(t("customersPage.customerAddedToast"));
       setOpen(false);
       setName("");
       setPhone("");
@@ -92,7 +93,7 @@ export function CustomersPage() {
       setAddress("");
       reload();
     } catch (e2) {
-      toast.error(e2 instanceof ApiClientError ? e2.message : "تعذّر إضافة العميل");
+      toast.error(e2 instanceof ApiClientError ? e2.message : t("customersPage.addCustomerFailed"));
     } finally {
       setCreating(false);
     }
@@ -100,36 +101,36 @@ export function CustomersPage() {
 
   const handleDelete = async (id: string) => {
     if (!token) return;
-    if (!confirm("هل أنت متأكد من حذف هذا العميل؟")) return;
+    if (!confirm(t("customersPage.confirmDeleteCustomer"))) return;
     try {
       await customersApi.delete(token, id);
-      toast.success("تم حذف العميل");
+      toast.success(t("customersPage.customerDeletedToast"));
       reload();
     } catch (e) {
-      toast.error(e instanceof ApiClientError ? e.message : "تعذّر حذف العميل");
+      toast.error(e instanceof ApiClientError ? e.message : t("customersPage.deleteCustomerFailed"));
     }
   };
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="العملاء"
-        description="إدارة عملائك ودفتر العناوين."
+        title={t("customersPage.title")}
+        description={t("customersPage.description")}
         action={
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button className="gap-1.5">
                 <Plus className="h-4 w-4" />
-                عميل جديد
+                {t("customersPage.newCustomerBtn")}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>إضافة عميل جديد</DialogTitle>
+                <DialogTitle>{t("customersPage.addCustomerTitle")}</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleCreate} className="space-y-4 py-2">
                 <div className="space-y-2">
-                  <Label>الاسم *</Label>
+                  <Label>{t("addressBookPage.nameLabel")}</Label>
                   <Input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -137,7 +138,7 @@ export function CustomersPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>رقم الجوال *</Label>
+                  <Label>{t("addressBookPage.phoneLabel")}</Label>
                   <Input
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
@@ -147,7 +148,7 @@ export function CustomersPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>البريد الإلكتروني</Label>
+                  <Label>{t("addressBookPage.emailLabel")}</Label>
                   <Input
                     type="email"
                     value={email}
@@ -157,14 +158,14 @@ export function CustomersPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
-                    <Label>المدينة</Label>
+                    <Label>{t("addressBookPage.cityLabel")}</Label>
                     <Input
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>العنوان</Label>
+                    <Label>{t("addressBookPage.addressLabel")}</Label>
                     <Input
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
@@ -177,11 +178,11 @@ export function CustomersPage() {
                     variant="outline"
                     onClick={() => setOpen(false)}
                   >
-                    إلغاء
+                    {t("common.cancel")}
                   </Button>
                   <Button type="submit" disabled={creating} className="gap-2">
                     {creating && <Loader2 className="h-4 w-4 animate-spin" />}
-                    حفظ العميل
+                    {t("customersPage.saveCustomerBtn")}
                   </Button>
                 </DialogFooter>
               </form>
@@ -191,31 +192,31 @@ export function CustomersPage() {
       />
 
       <div className="relative">
-        <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="بحث بالاسم أو الجوال أو البريد…"
-          className="pr-9"
+          placeholder={t("customersPage.searchPlaceholder")}
+          className="ps-9"
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
       </div>
 
       {loading ? (
-        <LoadingState message="جارٍ تحميل العملاء…" className="py-16" />
+        <LoadingState message={t("customersPage.loading")} className="py-16" />
       ) : error ? (
         <ErrorState message={error} onRetry={reload} className="py-16" />
       ) : filtered.length === 0 ? (
         <Card>
           <CardContent className="p-0">
             <EmptyState
-              title={q ? "لا توجد نتائج" : "لا يوجد عملاء بعد"}
-              description={q ? "جرّب تعديل البحث" : "أضف أول عميل لبدء تنظيم دفتر العناوين."}
+              title={q ? t("common.noResults") : t("customersPage.emptyTitle")}
+              description={q ? t("common.tryAdjustingSearchOnly") : t("customersPage.emptyDesc")}
               icon={UsersIcon}
               action={
                 !q && (
                   <Button onClick={() => setOpen(true)} className="gap-1.5">
                     <Plus className="h-4 w-4" />
-                    إضافة عميل
+                    {t("customersPage.addCustomerBtn")}
                   </Button>
                 )
               }
@@ -245,6 +246,8 @@ function CustomerCard({
   customer: Customer;
   onDelete: () => void;
 }) {
+  const { t } = useTranslation();
+
   return (
     <Card className="group relative hover:shadow-brand transition-shadow">
       <CardContent className="p-4 space-y-3">
@@ -260,8 +263,8 @@ function CustomerCard({
             </p>
             <p className="text-xs text-muted-foreground">
               {customer.shipmentsCount
-                ? `${customer.shipmentsCount} شحنة`
-                : "عميل جديد"}
+                ? t("addressBookPage.shipmentsCount", { count: customer.shipmentsCount })
+                : t("customersPage.newCustomerBadge")}
               {customer.createdAt && ` • ${timeAgo(customer.createdAt)}`}
             </p>
           </div>
@@ -269,7 +272,7 @@ function CustomerCard({
             type="button"
             onClick={onDelete}
             className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-            aria-label="حذف العميل"
+            aria-label={t("customersPage.deleteCustomerAria")}
           >
             <Trash2 className="h-4 w-4" />
           </button>
@@ -278,7 +281,7 @@ function CustomerCard({
           <div className="flex items-center gap-2 text-muted-foreground">
             <Phone className="h-3.5 w-3.5" />
             <span className="font-mono" dir="ltr">
-              {customer.phone ?? "—"}
+              {customer.phone ?? t("common.none")}
             </span>
           </div>
           {customer.email && (

@@ -9,8 +9,6 @@ import {
   Loader2,
   Phone,
   Mail,
-  User,
-  Building2,
   Send,
   Package,
   Pencil,
@@ -37,7 +35,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -48,20 +45,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { initials, timeAgo } from "@/lib/format";
+import { useTranslation } from "@/i18n";
 import type { Customer } from "@/types/api";
 
 /**
  * Address book page — manages both senders (مرسلين) and receivers (مستلمين).
- *
- * NOTE: The backend's /customers endpoint treats all contacts uniformly
- * (no "type" field on creation). The UI uses a "type" field client-side
- * (SENDER / RECEIVER / BOTH) which is stored as part of the customer
- * record (in `notes` or a custom field). When the backend adds a proper
- * "type" field, swap the create payload. See BACKEND_NOTES.md.
  */
 export function AddressBookPage() {
   const { token } = useAuth();
   const { list, loading, error, reload } = useCustomers(token);
+  const { t } = useTranslation();
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<"all" | "sender" | "receiver">("all");
   const [open, setOpen] = useState(false);
@@ -130,7 +123,7 @@ export function AddressBookPage() {
     e.preventDefault();
     if (!token) return;
     if (!name || !phone) {
-      toast.error("الاسم ورقم الجوال مطلوبان");
+      toast.error(t("addressBookPage.nameAndPhoneRequired"));
       return;
     }
     setCreating(true);
@@ -147,10 +140,10 @@ export function AddressBookPage() {
       };
       if (editing) {
         await customersApi.update(token, editing.id, payload);
-        toast.success("تم تحديث جهة الاتصال");
+        toast.success(t("addressBookPage.contactUpdatedToast"));
       } else {
         await customersApi.create(token, payload);
-        toast.success("تمت إضافة جهة الاتصال");
+        toast.success(t("addressBookPage.contactAddedToast"));
       }
       setOpen(false);
       resetForm();
@@ -159,7 +152,7 @@ export function AddressBookPage() {
       toast.error(
         e2 instanceof ApiClientError
           ? e2.message
-          : "تعذّر حفظ جهة الاتصال"
+          : t("addressBookPage.saveContactFailed")
       );
     } finally {
       setCreating(false);
@@ -168,14 +161,14 @@ export function AddressBookPage() {
 
   const handleDelete = async (id: string) => {
     if (!token) return;
-    if (!confirm("هل أنت متأكد من حذف هذه الجهة؟")) return;
+    if (!confirm(t("addressBookPage.confirmDeleteContact"))) return;
     try {
       await customersApi.delete(token, id);
-      toast.success("تم الحذف");
+      toast.success(t("addressBookPage.deletedToast"));
       reload();
     } catch (e) {
       toast.error(
-        e instanceof ApiClientError ? e.message : "تعذّر الحذف"
+        e instanceof ApiClientError ? e.message : t("addressBookPage.deleteFailed")
       );
     }
   };
@@ -183,12 +176,12 @@ export function AddressBookPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="دفتر العناوين"
-        description="إدارة المرسلين والمستلمين المستخدمين في الشحنات."
+        title={t("addressBookPage.title")}
+        description={t("addressBookPage.description")}
         action={
           <Button onClick={openCreate} className="gap-1.5">
             <Plus className="h-4 w-4" />
-            إضافة جهة
+            {t("addressBookPage.addContactBtn")}
           </Button>
         }
       />
@@ -196,19 +189,19 @@ export function AddressBookPage() {
       {/* Filter tabs */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="بحث بالاسم أو الجوال أو البريد…"
-            className="pr-9"
+            placeholder={t("addressBookPage.searchPlaceholder")}
+            className="ps-9"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
         </div>
         <div className="flex gap-1 p-1 bg-muted rounded-lg">
           {[
-            { v: "all", label: "الكل" },
-            { v: "sender", label: "المرسلون" },
-            { v: "receiver", label: "المستلمون" },
+            { v: "all", label: t("addressBookPage.filterAll") },
+            { v: "sender", label: t("addressBookPage.filterSenders") },
+            { v: "receiver", label: t("addressBookPage.filterReceivers") },
           ].map((opt) => (
             <button
               key={opt.v}
@@ -227,25 +220,25 @@ export function AddressBookPage() {
       </div>
 
       {loading ? (
-        <LoadingState message="جارٍ تحميل دفتر العناوين…" className="py-16" />
+        <LoadingState message={t("addressBookPage.loading")} className="py-16" />
       ) : error ? (
         <ErrorState message={error} onRetry={reload} className="py-16" />
       ) : filtered.length === 0 ? (
         <Card>
           <CardContent className="p-0">
             <EmptyState
-              title={q || filter !== "all" ? "لا توجد نتائج" : "دفتر العناوين فارغ"}
+              title={q || filter !== "all" ? t("common.noResults") : t("addressBookPage.emptyBookTitle")}
               description={
                 q || filter !== "all"
-                  ? "جرّب تعديل البحث أو الفلتر"
-                  : "أضف مرسلك أو مستلمك الأول لاستخدامه في إنشاء الشحنات."
+                  ? t("common.tryAdjustingSearch")
+                  : t("addressBookPage.emptyBookDesc")
               }
               icon={MapPin}
               action={
                 !q && filter === "all" ? (
                   <Button onClick={openCreate} className="gap-1.5">
                     <Plus className="h-4 w-4" />
-                    إضافة جهة
+                    {t("addressBookPage.addContactBtn")}
                   </Button>
                 ) : undefined
               }
@@ -277,12 +270,12 @@ export function AddressBookPage() {
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editing ? "تعديل جهة الاتصال" : "إضافة جهة اتصال جديدة"}
+              {editing ? t("addressBookPage.editContactTitle") : t("addressBookPage.addContactTitle")}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSave} className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label>نوع الجهة</Label>
+              <Label>{t("addressBookPage.contactTypeLabel")}</Label>
               <Select
                 value={type}
                 onValueChange={(v) => setType(v as typeof type)}
@@ -291,25 +284,25 @@ export function AddressBookPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="BOTH">مرسل / مستلم</SelectItem>
-                  <SelectItem value="SENDER">مرسل فقط</SelectItem>
-                  <SelectItem value="RECEIVER">مستلم فقط</SelectItem>
+                  <SelectItem value="BOTH">{t("addressBookPage.typeBoth")}</SelectItem>
+                  <SelectItem value="SENDER">{t("addressBookPage.typeSenderOnly")}</SelectItem>
+                  <SelectItem value="RECEIVER">{t("addressBookPage.typeReceiverOnly")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label>الاسم *</Label>
+              <Label>{t("addressBookPage.nameLabel")}</Label>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="مثال: شركة الأمل"
+                placeholder={t("addressBookPage.namePlaceholder")}
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <Label>رقم الجوال *</Label>
+              <Label>{t("addressBookPage.phoneLabel")}</Label>
               <Input
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
@@ -320,7 +313,7 @@ export function AddressBookPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>البريد الإلكتروني</Label>
+              <Label>{t("addressBookPage.emailLabel")}</Label>
               <Input
                 type="email"
                 value={email}
@@ -331,14 +324,14 @@ export function AddressBookPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label>المدينة</Label>
+                <Label>{t("addressBookPage.cityLabel")}</Label>
                 <Input
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
-                <Label>العنوان</Label>
+                <Label>{t("addressBookPage.addressLabel")}</Label>
                 <Input
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
@@ -347,11 +340,11 @@ export function AddressBookPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>ملاحظات</Label>
+              <Label>{t("addressBookPage.notesLabel")}</Label>
               <Input
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="أي تعليمات خاصة"
+                placeholder={t("addressBookPage.notesPlaceholder")}
               />
             </div>
 
@@ -362,11 +355,11 @@ export function AddressBookPage() {
                 onClick={() => setOpen(false)}
                 disabled={creating}
               >
-                إلغاء
+                {t("common.cancel")}
               </Button>
               <Button type="submit" disabled={creating} className="gap-2">
                 {creating && <Loader2 className="h-4 w-4 animate-spin" />}
-                {editing ? "حفظ التعديلات" : "إضافة الجهة"}
+                {editing ? t("common.saveChanges") : t("addressBookPage.addContactSubmit")}
               </Button>
             </DialogFooter>
           </form>
@@ -385,6 +378,7 @@ function ContactCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useTranslation();
   const contactType = (contact.type ?? "BOTH") as string;
   const isSender = contactType === "SENDER" || contactType === "BOTH";
   const isReceiver = contactType === "RECEIVER" || contactType === "BOTH";
@@ -404,8 +398,8 @@ function ContactCard({
             </p>
             <p className="text-xs text-muted-foreground">
               {contact.shipmentsCount
-                ? `${contact.shipmentsCount} شحنة`
-                : "جديد"}
+                ? t("addressBookPage.shipmentsCount", { count: contact.shipmentsCount })
+                : t("addressBookPage.newBadge")}
               {contact.createdAt && ` • ${timeAgo(contact.createdAt)}`}
             </p>
           </div>
@@ -414,7 +408,7 @@ function ContactCard({
               type="button"
               onClick={onEdit}
               className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10"
-              aria-label="تعديل"
+              aria-label={t("common.edit")}
             >
               <Pencil className="h-3.5 w-3.5" />
             </button>
@@ -422,7 +416,7 @@ function ContactCard({
               type="button"
               onClick={onDelete}
               className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-              aria-label="حذف"
+              aria-label={t("common.delete")}
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>
@@ -434,13 +428,13 @@ function ContactCard({
           {isSender && (
             <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50 gap-1">
               <Send className="h-3 w-3" />
-              مرسل
+              {t("addressBookPage.senderBadge")}
             </Badge>
           )}
           {isReceiver && (
             <Badge className="bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-50 gap-1">
               <Package className="h-3 w-3" />
-              مستلم
+              {t("addressBookPage.receiverBadge")}
             </Badge>
           )}
         </div>
@@ -450,7 +444,7 @@ function ContactCard({
           <div className="flex items-center gap-2 text-muted-foreground">
             <Phone className="h-3.5 w-3.5" />
             <span className="font-mono" dir="ltr">
-              {contact.phone ?? "—"}
+              {contact.phone ?? t("common.none")}
             </span>
           </div>
           {contact.email && (

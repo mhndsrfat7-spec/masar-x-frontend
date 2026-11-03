@@ -2,6 +2,7 @@
 
 import { ChevronDown, Phone } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/i18n";
 
 interface PhoneInputProps {
   value: string;
@@ -91,12 +92,13 @@ function formatLocal(digits: string): string {
 }
 
 export function SaudiFlag({ className }: { className?: string }) {
+  const { t } = useTranslation();
   return (
     <svg
       viewBox="0 0 24 16"
       className={className}
       xmlns="http://www.w3.org/2000/svg"
-      aria-label="علم المملكة العربية السعودية"
+      aria-label={t("brand.saudiFlagAria")}
       role="img"
     >
       <rect width="24" height="16" fill="#006C35" />

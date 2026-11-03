@@ -3,6 +3,7 @@
 import { Building2, User, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { UiAccountType } from "@/hooks/useAuth";
+import { useTranslation } from "@/i18n";
 
 interface AccountTypeToggleProps {
   value: UiAccountType;
@@ -46,6 +47,8 @@ function SegmentedVariant({
   onChange: (v: UiAccountType) => void;
   className?: string;
 }) {
+  const { t } = useTranslation();
+
   const options: {
     value: UiAccountType;
     label: string;
@@ -53,12 +56,12 @@ function SegmentedVariant({
   }[] = [
     {
       value: "merchant",
-      label: "حساب تاجر",
+      label: t("auth.merchantAccount"),
       icon: <Building2 className="h-4 w-4" />,
     },
     {
       value: "customer",
-      label: "حساب عميل",
+      label: t("auth.customerAccount"),
       icon: <User className="h-4 w-4" />,
     },
   ];
@@ -114,6 +117,8 @@ function CardsVariant({
   onChange: (v: UiAccountType) => void;
   className?: string;
 }) {
+  const { t } = useTranslation();
+
   const options: {
     value: UiAccountType;
     label: string;
@@ -122,14 +127,14 @@ function CardsVariant({
   }[] = [
     {
       value: "merchant",
-      label: "حساب تاجر",
-      desc: "لإدارة شحنات متجرك",
+      label: t("auth.merchantAccount"),
+      desc: t("auth.merchantAccountDesc"),
       icon: <Building2 className="h-6 w-6" />,
     },
     {
       value: "customer",
-      label: "حساب عميل",
-      desc: "لإرسال واستقبال الشحنات",
+      label: t("auth.customerAccount"),
+      desc: t("auth.customerAccountDesc"),
       icon: <User className="h-6 w-6" />,
     },
   ];
@@ -160,10 +165,10 @@ function CardsVariant({
                 : undefined
             }
           >
-            {/* Circular check badge (top-left in RTL = top-right visual) */}
+            {/* Circular check badge */}
             {active && (
               <span
-                className="absolute top-2.5 left-2.5 flex h-5 w-5 items-center justify-center rounded-full text-white shadow-sm"
+                className="absolute top-2.5 end-2.5 flex h-5 w-5 items-center justify-center rounded-full text-white shadow-sm"
                 style={{ backgroundColor: "#689F38" }}
               >
                 <Check className="h-3 w-3" strokeWidth={3} />

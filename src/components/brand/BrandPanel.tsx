@@ -9,6 +9,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/i18n";
 
 interface BrandPanelProps {
   variant?: "login" | "register";
@@ -26,26 +27,38 @@ interface BrandPanelProps {
  *  - 3 value propositions at the bottom
  */
 export function BrandPanel({ variant = "login", className }: BrandPanelProps) {
+  const { t } = useTranslation();
+
   return (
     <div
       className={cn(
         "relative hidden lg:flex lg:flex-col justify-between overflow-hidden h-full min-h-screen",
-        "bg-brand-gradient text-white p-10 xl:p-14",
+        "bg-brand-gradient auth-brand-panel text-white p-10 xl:p-14",
         className
       )}
     >
-      {/* Decorative dotted world map backdrop */}
-      <WorldMapBackdrop />
+      {/* Soft animated brand waves — subtle enough to keep the form-side focus. */}
+      <div className="auth-wave-layer" aria-hidden="true">
+        <svg className="auth-wave auth-wave-one" viewBox="0 0 900 260" preserveAspectRatio="none">
+          <path d="M0 150 C150 70 260 220 430 145 S700 65 900 135" />
+        </svg>
+        <svg className="auth-wave auth-wave-two" viewBox="0 0 900 260" preserveAspectRatio="none">
+          <path d="M0 185 C170 105 300 245 470 175 S720 100 900 165" />
+        </svg>
+        <svg className="auth-wave auth-wave-three" viewBox="0 0 900 260" preserveAspectRatio="none">
+          <path d="M0 115 C180 205 300 55 490 125 S740 215 900 105" />
+        </svg>
+      </div>
 
       {/* Soft radial glow accents */}
       <div
         className="absolute top-1/4 -left-20 h-72 w-72 rounded-full opacity-30 blur-3xl pointer-events-none"
-        style={{ background: "radial-gradient(circle, #10B981 0%, transparent 70%)" }}
+        style={{ background: "radial-gradient(circle, rgba(16,185,129,.72) 0%, transparent 70%)" }}
         aria-hidden
       />
       <div
         className="absolute bottom-1/4 -right-20 h-72 w-72 rounded-full opacity-20 blur-3xl pointer-events-none"
-        style={{ background: "radial-gradient(circle, #A3D9A5 0%, transparent 70%)" }}
+        style={{ background: "radial-gradient(circle, rgba(163,217,165,.58) 0%, transparent 70%)" }}
         aria-hidden
       />
 
@@ -55,11 +68,10 @@ export function BrandPanel({ variant = "login", className }: BrandPanelProps) {
 
         <div className="space-y-3 max-w-md">
           <h2 className="text-3xl xl:text-4xl font-bold leading-tight text-balance">
-            شحنك أدق، وأعمالك أسرع
+            {t("brand.slogan")}
           </h2>
           <p className="text-white/80 text-base leading-relaxed">
-            منصة واحدة لإدارة شحناتك مع كافة شركات الشحن المحلية والدولية —
-            تتبّع لحظي، تسعير فوري، ومحفظة ذكية.
+            {t("brand.description")}
           </p>
         </div>
       </div>
@@ -73,18 +85,18 @@ export function BrandPanel({ variant = "login", className }: BrandPanelProps) {
       <div className="relative z-10 grid grid-cols-3 gap-4 pt-8 border-t border-white/10">
         <ValueProp
           icon={ShieldCheck}
-          title="تعاملات آمنة"
-          desc="تشفير كامل"
+          title={t("brand.secureTransactions")}
+          desc={t("brand.fullEncryption")}
         />
         <ValueProp
           icon={Globe2}
-          title="شحن محلي ودولي"
-          desc="لكل الوجهات"
+          title={t("brand.domesticAndInternational")}
+          desc={t("brand.allDestinations")}
         />
         <ValueProp
           icon={Truck}
-          title="سريع وفعّال"
-          desc="توصيل موثوق"
+          title={t("brand.fastAndEfficient")}
+          desc={t("brand.reliableDelivery")}
         />
       </div>
     </div>
@@ -113,62 +125,6 @@ function ValueProp({
   );
 }
 
-/** Dotted world-map backdrop with route curves + location pins. */
-function WorldMapBackdrop() {
-  return (
-    <div className="absolute inset-0 opacity-[0.08] pointer-events-none">
-      <svg
-        viewBox="0 0 800 600"
-        className="w-full h-full"
-        xmlns="http://www.w3.org/2000/svg"
-        aria-hidden
-      >
-        <defs>
-          <pattern
-            id="brand-dots"
-            x="0"
-            y="0"
-            width="14"
-            height="14"
-            patternUnits="userSpaceOnUse"
-          >
-            <circle cx="2" cy="2" r="1.2" fill="white" />
-          </pattern>
-        </defs>
-        <rect width="800" height="600" fill="url(#brand-dots)" />
-        {/* Abstract continents */}
-        <g fill="white" opacity="0.4">
-          <path d="M120 180 Q180 140 240 170 T360 200 L340 260 Q280 290 220 270 T140 250 Z" />
-          <path d="M420 140 Q500 110 580 150 T700 180 L680 240 Q600 270 520 250 T440 220 Z" />
-          <path d="M180 360 Q260 320 340 360 L320 440 Q240 470 180 440 Z" />
-          <path d="M500 340 Q580 300 660 340 L640 420 Q560 450 500 420 Z" />
-        </g>
-        {/* Route curves */}
-        <g
-          fill="none"
-          stroke="#A3D9A5"
-          strokeWidth="1.5"
-          strokeDasharray="4 6"
-          opacity="0.6"
-        >
-          <path d="M180 220 Q300 120 460 180 T720 220" />
-          <path d="M200 360 Q320 280 480 320 T700 360" />
-          <path d="M140 280 Q260 240 380 280" />
-        </g>
-        {/* Location pins */}
-        <g fill="#A3D9A5" opacity="0.8">
-          <circle cx="180" cy="220" r="5" />
-          <circle cx="460" cy="180" r="5" />
-          <circle cx="720" cy="220" r="5" />
-          <circle cx="200" cy="360" r="5" />
-          <circle cx="480" cy="320" r="5" />
-          <circle cx="700" cy="360" r="5" />
-        </g>
-      </svg>
-    </div>
-  );
-}
-
 function IllustrationCluster({
   variant,
 }: {
@@ -180,27 +136,27 @@ function IllustrationCluster({
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="relative h-72 w-72">
             {/* Center globe */}
-            <div className="absolute inset-8 rounded-full bg-white/5 border border-white/15 flex items-center justify-center">
+            <div className="absolute inset-8 rounded-full bg-emerald-300/[0.08] border border-emerald-100/20 shadow-[0_0_70px_rgba(16,185,129,0.12)] flex items-center justify-center">
               <Globe2 className="h-28 w-28 text-white/70 animate-pulse-soft" />
             </div>
             {/* Orbiting transport icons */}
-            <div className="absolute -top-2 left-1/2 -translate-x-1/2 p-3 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/15 animate-float">
+            <div className="absolute -top-2 left-1/2 -translate-x-1/2 p-3 rounded-2xl bg-emerald-300/10 backdrop-blur-sm border border-emerald-100/20 shadow-lg shadow-emerald-950/10 animate-float">
               <Truck className="h-7 w-7 text-white" />
             </div>
             <div
-              className="absolute top-1/2 -right-2 -translate-y-1/2 p-3 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/15 animate-float"
+              className="absolute top-1/2 -right-2 -translate-y-1/2 p-3 rounded-2xl bg-emerald-300/10 backdrop-blur-sm border border-emerald-100/20 shadow-lg shadow-emerald-950/10 animate-float"
               style={{ animationDelay: "0.5s" }}
             >
               <MapPin className="h-7 w-7 text-white" />
             </div>
             <div
-              className="absolute -bottom-2 left-1/2 -translate-x-1/2 p-3 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/15 animate-float"
+              className="absolute -bottom-2 left-1/2 -translate-x-1/2 p-3 rounded-2xl bg-emerald-300/10 backdrop-blur-sm border border-emerald-100/20 shadow-lg shadow-emerald-950/10 animate-float"
               style={{ animationDelay: "1s" }}
             >
               <Globe2 className="h-7 w-7 text-white" />
             </div>
             <div
-              className="absolute top-1/2 -left-2 -translate-y-1/2 p-3 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/15 animate-float"
+              className="absolute top-1/2 -left-2 -translate-y-1/2 p-3 rounded-2xl bg-emerald-300/10 backdrop-blur-sm border border-emerald-100/20 shadow-lg shadow-emerald-950/10 animate-float"
               style={{ animationDelay: "1.5s" }}
             >
               <ShieldCheck className="h-7 w-7 text-white" />
@@ -234,7 +190,7 @@ function IllustrationCluster({
         {/* Glow route line */}
         <path
           d="M70 80 Q200 60 320 140 T460 220"
-          stroke="rgba(163, 217, 165, 0.25)"
+          stroke="rgba(16, 185, 129, 0.22)"
           strokeWidth="8"
           strokeLinecap="round"
           fill="none"
@@ -242,7 +198,7 @@ function IllustrationCluster({
         {/* Dashed route line */}
         <path
           d="M70 80 Q200 60 320 140 T460 220"
-          stroke="#A3D9A5"
+          stroke="#6EE7B7"
           strokeWidth="2.5"
           strokeDasharray="6 8"
           strokeLinecap="round"
@@ -294,16 +250,16 @@ function Box3D() {
     >
       <defs>
         <linearGradient id="box-top" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#E5B983" />
-          <stop offset="100%" stopColor="#D4A574" />
+          <stop offset="0%" stopColor="#A3D9A5" />
+          <stop offset="100%" stopColor="#6FCB91" />
         </linearGradient>
         <linearGradient id="box-front" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#D4A574" />
-          <stop offset="100%" stopColor="#B8865A" />
+          <stop offset="0%" stopColor="#4FAE7A" />
+          <stop offset="100%" stopColor="#1F7A4E" />
         </linearGradient>
         <linearGradient id="box-side" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#C99A6B" />
-          <stop offset="100%" stopColor="#A87644" />
+          <stop offset="0%" stopColor="#27845C" />
+          <stop offset="100%" stopColor="#0D3B3E" />
         </linearGradient>
       </defs>
       {/* Top face (isometric) */}
@@ -339,7 +295,7 @@ function Box3D() {
         X
       </text>
       {/* Barcode on front */}
-      <g fill="#8B5A2B" opacity="0.6">
+      <g fill="#0D3B3E" opacity="0.48">
         <rect x="36" y="70" width="1.5" height="20" />
         <rect x="39" y="70" width="0.8" height="20" />
         <rect x="41.5" y="70" width="2" height="20" />

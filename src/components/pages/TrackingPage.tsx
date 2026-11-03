@@ -17,10 +17,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDateTime } from "@/lib/format";
+import { useTranslation } from "@/i18n";
 import type { TrackingResult } from "@/types/api";
 
 export function TrackingPage() {
   const { trackingNumber: initial } = useRouterStore((s) => s.params);
+  const { t } = useTranslation();
   const [trackingNumber, setTrackingNumber] = useState(initial ?? "");
   const [result, setResult] = useState<TrackingResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -30,7 +32,7 @@ export function TrackingPage() {
   const runSearch = async (tn: string) => {
     const v = tn.trim();
     if (!v) {
-      setError("الرجاء إدخال رقم التتبع");
+      setError(t("trackingPage.enterTrackingNumberError"));
       return;
     }
     setLoading(true);
@@ -39,9 +41,9 @@ export function TrackingPage() {
     try {
       const res = await publicApi.track(v);
       setResult(res);
-      if (res) toast.success("تم العثور على الشحنة");
+      if (res) toast.success(t("trackingPage.shipmentFoundToast"));
     } catch (e) {
-      const msg = e instanceof ApiClientError ? e.message : "تعذّر العثور على الشحنة";
+      const msg = e instanceof ApiClientError ? e.message : t("trackingPage.shipmentNotFoundError");
       setError(msg);
       setResult(null);
     } finally {
@@ -54,6 +56,7 @@ export function TrackingPage() {
       setTrackingNumber(initial);
       void runSearch(initial);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initial]);
 
   const events =
@@ -62,8 +65,8 @@ export function TrackingPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="تتبّع شحنة"
-        description="أدخل رقم التتبع لمتابعة حالة شحنتك في الوقت الفعلي."
+        title={t("trackingPage.title")}
+        description={t("trackingPage.description")}
       />
 
       <Card>
@@ -78,7 +81,7 @@ export function TrackingPage() {
             <div className="relative flex-1">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="أدخل رقم التتبع، مثال: MX-4587"
+                placeholder={t("trackingPage.inputPlaceholder")}
                 className="pr-9 h-11"
                 value={trackingNumber}
                 onChange={(e) => setTrackingNumber(e.target.value)}
@@ -96,7 +99,7 @@ export function TrackingPage() {
               ) : (
                 <Search className="h-4 w-4" />
               )}
-              تتبّع
+              {t("trackingPage.trackBtn")}
             </Button>
           </form>
         </CardContent>
@@ -106,8 +109,8 @@ export function TrackingPage() {
         <Card>
           <CardContent className="py-16">
             <EmptyState
-              title="ابدأ بتتبّع شحنتك"
-              description="أدخل رقم التتبع في الحقل أعلاه للحصول على أحدث حالة للشحنة."
+              title={t("trackingPage.startTrackingTitle")}
+              description={t("trackingPage.startTrackingDesc")}
               icon={Package}
             />
           </CardContent>
@@ -115,7 +118,7 @@ export function TrackingPage() {
       ) : loading ? (
         <Card>
           <CardContent className="py-16">
-            <LoadingState message="جارٍ البحث عن الشحنة…" />
+            <LoadingState message={t("trackingPage.searchingShipment")} />
           </CardContent>
         </Card>
       ) : error ? (
@@ -132,7 +135,7 @@ export function TrackingPage() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">رقم التتبع:</span>
+                    <span className="text-sm text-muted-foreground">{t("trackingPage.trackingNumberLabel")}</span>
                     <span className="font-mono text-sm font-bold text-primary" dir="ltr">
                       {result.trackingNumber}
                     </span>
@@ -149,22 +152,22 @@ export function TrackingPage() {
                 </div>
                 <div className="flex flex-wrap items-center gap-4">
                   <div className="text-center">
-                    <p className="text-[11px] text-muted-foreground">المصدر</p>
+                    <p className="text-[11px] text-muted-foreground">{t("trackingPage.originLabel")}</p>
                     <p className="text-sm font-medium flex items-center gap-1">
                       <MapPin className="h-3.5 w-3.5 text-primary" />
-                      {result.origin ?? result.originCity ?? "—"}
+                      {result.origin ?? result.originCity ?? t("common.none")}
                     </p>
                   </div>
                   <div className="text-center">
-                    <p className="text-[11px] text-muted-foreground">الوجهة</p>
+                    <p className="text-[11px] text-muted-foreground">{t("trackingPage.destinationLabel")}</p>
                     <p className="text-sm font-medium flex items-center gap-1">
                       <MapPin className="h-3.5 w-3.5 text-primary" />
-                      {result.destination ?? result.destinationCity ?? "—"}
+                      {result.destination ?? result.destinationCity ?? t("common.none")}
                     </p>
                   </div>
                   {result.estimatedDelivery && (
                     <div className="text-center">
-                      <p className="text-[11px] text-muted-foreground">التسليم المتوقع</p>
+                      <p className="text-[11px] text-muted-foreground">{t("trackingPage.estimatedDeliveryLabel")}</p>
                       <p className="text-sm font-medium flex items-center gap-1">
                         <Calendar className="h-3.5 w-3.5 text-primary" />
                         {formatDateTime(result.estimatedDelivery)}
@@ -179,25 +182,25 @@ export function TrackingPage() {
           {/* Timeline */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">سجل التتبّع</CardTitle>
+              <CardTitle className="text-base">{t("trackingPage.timelineTitle")}</CardTitle>
             </CardHeader>
             <CardContent>
               {events.length === 0 ? (
                 <EmptyState
-                  title="لا توجد تحديثات"
-                  description="لا توجد أحداث تتبّع لهذه الشحنة بعد."
+                  title={t("trackingPage.noUpdatesTitle")}
+                  description={t("trackingPage.noUpdatesDesc")}
                   icon={Package}
                   className="py-8"
                 />
               ) : (
-                <ol className="relative space-y-5 pr-5 border-r-2 border-border">
+                <ol className="relative space-y-5 ps-5 border-s-2 border-border">
                   {events.map((ev, i) => {
                     const meta = getStatusMeta(ev.status ?? "");
                     const Icon = meta.icon;
                     return (
                       <li key={i} className="relative">
                         <span
-                          className={`absolute -right-[1.55rem] top-1 h-3 w-3 rounded-full ring-4 ring-background ${meta.dot}`}
+                          className={`absolute -start-[1.55rem] top-1 h-3 w-3 rounded-full ring-4 ring-background ${meta.dot}`}
                         />
                         <div className="space-y-1">
                           <div className="flex items-center justify-between gap-2">
@@ -207,7 +210,7 @@ export function TrackingPage() {
                                 ev.message ??
                                 ev.messageAr ??
                                 ev.status ??
-                                "تحديث"}
+                                t("shipmentDetailsPage.updateFallback")}
                             </p>
                             <span className="text-[11px] text-muted-foreground">
                               {formatDateTime(ev.timestamp ?? ev.createdAt)}

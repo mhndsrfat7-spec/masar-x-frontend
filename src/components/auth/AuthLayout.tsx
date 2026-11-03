@@ -2,6 +2,8 @@
 
 import { BrandPanel } from "@/components/brand/BrandPanel";
 import { LogoMark } from "@/components/brand/Logo";
+import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
+import { useTranslation } from "@/i18n";
 
 interface AuthLayoutProps {
   children: React.ReactNode;
@@ -17,6 +19,8 @@ interface AuthLayoutProps {
  * On mobile: BrandPanel is hidden, only the form shows.
  */
 export function AuthLayout({ children, variant = "login" }: AuthLayoutProps) {
+  const { t } = useTranslation();
+
   return (
     // Fixed full-height container: the outer screen and the green brand panel
     // never move; only the inner white card scrolls softly when the form is long.
@@ -28,20 +32,23 @@ export function AuthLayout({ children, variant = "login" }: AuthLayoutProps) {
 
       {/* Form side (appears on the left in RTL) — fixed height, no outer scroll */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        <header className="hidden lg:flex items-center justify-between px-8 py-5 shrink-0">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>منصة الشحن السعودية الموحدة</span>
+        <header className="flex items-center justify-between px-5 sm:px-8 py-4 lg:py-5 shrink-0">
+          <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+            <span>{t("common.brandSubtitle")}</span>
           </div>
-          <a
-            href="#"
-            className="text-xs text-muted-foreground hover:text-primary transition-colors"
-          >
-            مساعدة؟
-          </a>
+          <div className="flex items-center gap-3">
+            <LanguageSwitcher variant="auth" />
+            <a
+              href="#"
+              className="hidden sm:inline text-xs text-muted-foreground hover:text-primary transition-colors"
+            >
+              {t("common.help")}
+            </a>
+          </div>
         </header>
 
         {/* Only the centered card area scrolls internally when the form is long. */}
-        <main className="flex-1 flex items-center justify-center px-5 py-8 sm:px-8 overflow-y-auto">
+        <main className="flex-1 flex items-center justify-center px-5 py-4 sm:py-8 sm:px-8 overflow-y-auto">
           <div className="w-full max-w-md max-h-[calc(100vh-7rem)]">
             {/* Mobile logo */}
             <div className="lg:hidden flex justify-center mb-6">
@@ -55,7 +62,7 @@ export function AuthLayout({ children, variant = "login" }: AuthLayoutProps) {
         </main>
 
         <footer className="px-8 py-5 text-center text-[11px] text-muted-foreground shrink-0">
-          © {new Date().getFullYear()} مسار إكس — جميع الحقوق محفوظة
+          {t("common.allRightsReserved", { year: new Date().getFullYear() })}
         </footer>
       </div>
     </div>

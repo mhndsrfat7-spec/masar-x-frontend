@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ShieldCheck, Loader2, Lock, X } from "lucide-react";
+import { ShieldCheck, Loader2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,6 +13,7 @@ import {
 import { toast } from "sonner";
 import { securityApi } from "@/lib/api/services";
 import { ApiClientError } from "@/lib/api/client";
+import { useTranslation } from "@/i18n";
 
 interface PasswordConfirmModalProps {
   open: boolean;
@@ -42,6 +43,7 @@ export function PasswordConfirmModal({
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   // Reset state when modal opens
   useEffect(() => {
@@ -55,11 +57,11 @@ export function PasswordConfirmModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!password) {
-      setError("الرجاء إدخال كلمة المرور");
+      setError(t("passwordModal.enterPasswordError"));
       return;
     }
     if (!token) {
-      setError("انتهت الجلسة، الرجاء تسجيل الدخول مرة أخرى");
+      setError(t("common.sessionExpiredLoginAgain"));
       return;
     }
     setBusy(true);
@@ -70,7 +72,7 @@ export function PasswordConfirmModal({
       onOpenChange(false);
     } catch (e) {
       const err = e as ApiClientError;
-      const msg = err.message || "كلمة المرور غير صحيحة";
+      const msg = err.message || t("passwordModal.wrongPasswordError");
       setError(msg);
       toast.error(msg);
     } finally {
@@ -86,7 +88,7 @@ export function PasswordConfirmModal({
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <ShieldCheck className="h-4 w-4" />
             </span>
-            تأكيد أمني
+            {t("passwordModal.title")}
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground pt-1">
             {actionDescription}
@@ -96,7 +98,7 @@ export function PasswordConfirmModal({
         <form onSubmit={handleSubmit} className="p-5 pt-3 space-y-4">
           <div className="space-y-1.5">
             <label htmlFor="confirm-password" className="text-sm font-medium text-foreground">
-              كلمة مرور حسابك
+              {t("passwordModal.passwordLabel")}
             </label>
             <div className="relative flex items-stretch rounded-lg border border-border bg-card overflow-hidden focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15" dir="ltr">
               <div className="flex items-center px-3 border-l border-border bg-muted/40 text-muted-foreground">
@@ -129,7 +131,7 @@ export function PasswordConfirmModal({
               disabled={busy}
               className="flex-1"
             >
-              إلغاء
+              {t("common.cancel")}
             </Button>
             <Button
               type="submit"
@@ -139,19 +141,19 @@ export function PasswordConfirmModal({
               {busy ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  جارٍ التحقق…
+                  {t("auth.verifying")}
                 </>
               ) : (
                 <>
                   <ShieldCheck className="h-4 w-4" />
-                  تأكيد
+                  {t("common.confirm")}
                 </>
               )}
             </Button>
           </div>
 
           <p className="text-[10px] text-center text-muted-foreground">
-            🔒 يتم التحقق من كلمة المرور بأمان ولا يتم تخزينها
+            {t("passwordModal.securityNote")}
           </p>
         </form>
       </DialogContent>

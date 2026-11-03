@@ -2,6 +2,7 @@
 
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/i18n";
 
 interface PageHeaderProps {
   title: string;
@@ -61,12 +62,13 @@ export function SectionTitle({
 }
 
 export function BackButton({
-  label = "رجوع",
+  label,
   onClick,
 }: {
   label?: string;
   onClick?: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <button
       type="button"
@@ -74,7 +76,7 @@ export function BackButton({
       className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
     >
       <ArrowRight className="h-4 w-4 rtl-flip" />
-      {label}
+      {label ?? t("common.back")}
     </button>
   );
 }

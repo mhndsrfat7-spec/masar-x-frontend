@@ -6,6 +6,7 @@ import { authApi, isDemoMode } from "@/lib/api/services";
 import type { AccountType, AuthSession, UserProfile } from "@/types/api";
 import { ApiClientError } from "@/lib/api/client";
 import { useRouterStore } from "@/store/routerStore";
+import { tStatic } from "@/i18n";
 
 /** UI-friendly alias — convert from MERCHANT/INDIVIDUAL to merchant/customer. */
 export type UiAccountType = "merchant" | "customer";
@@ -63,7 +64,7 @@ export function useAuth() {
         throw new ApiClientError({
           status: 500,
           code: "no_token",
-          message: "لم يتم استلام رمز الوصول من الخادم",
+          message: tStatic("auth.errors.noAccessTokenReceived"),
         });
       }
       const apiAccountType = resp.accountType ?? toApiType(accountType);
@@ -123,7 +124,7 @@ export function useAuth() {
         throw new ApiClientError({
           status: 202,
           code: "OTP_REQUIRED",
-          message: "تسجيل الدخول بكلمة المرور غير مفعّل في الخادم بعد. أرسلنا رمز تحقق بديلًا إلى جوالك.",
+          message: tStatic("auth.errors.passwordLoginNotEnabledFallback"),
         });
       }
     },

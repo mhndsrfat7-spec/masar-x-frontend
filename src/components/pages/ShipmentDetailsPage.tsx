@@ -33,11 +33,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import {
-  formatDate,
   formatDateTime,
   formatSAR,
   halToSar,
 } from "@/lib/format";
+import { useTranslation } from "@/i18n";
 import type { ShipmentHistoryItem } from "@/types/api";
 
 export function ShipmentDetailsPage() {
@@ -45,6 +45,7 @@ export function ShipmentDetailsPage() {
   const navigate = useRouterStore((s) => s.navigate);
   const { token } = useAuth();
   const { item, loading, error, reload } = useShipmentDetails(token, id);
+  const { t } = useTranslation();
 
   const [cancelling, setCancelling] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -62,7 +63,7 @@ export function ShipmentDetailsPage() {
     return (
       <div className="space-y-4">
         <BackButton onClick={() => navigate("shipments")} />
-        <LoadingState message="جارٍ تحميل تفاصيل الشحنة…" />
+        <LoadingState message={t("shipmentDetailsPage.loading")} />
       </div>
     );
   }
@@ -92,11 +93,11 @@ export function ShipmentDetailsPage() {
     setCancelling(true);
     try {
       await shipmentsApi.cancel(token, item.id);
-      toast.success("تم إلغاء الشحنة");
+      toast.success(t("shipmentDetailsPage.cancelledToast"));
       reload();
     } catch (e) {
       toast.error(
-        e instanceof ApiClientError ? e.message : "تعذّر إلغاء الشحنة"
+        e instanceof ApiClientError ? e.message : t("shipmentDetailsPage.cancelFailedToast")
       );
     } finally {
       setCancelling(false);
@@ -108,11 +109,11 @@ export function ShipmentDetailsPage() {
     setConfirming(true);
     try {
       await shipmentsApi.confirm(token, item.id);
-      toast.success("تم تأكيد الشحنة وخصم قيمتها من المحفظة");
+      toast.success(t("shipmentDetailsPage.confirmedToast"));
       reload();
     } catch (e) {
       toast.error(
-        e instanceof ApiClientError ? e.message : "تعذّر تأكيد الشحنة"
+        e instanceof ApiClientError ? e.message : t("shipmentDetailsPage.confirmFailedToast")
       );
     } finally {
       setConfirming(false);
@@ -127,11 +128,11 @@ export function ShipmentDetailsPage() {
       if (res?.url) {
         window.open(res.url, "_blank", "noopener,noreferrer");
       } else {
-        toast.info("لا توجد بطاقة شحن متاحة بعد");
+        toast.info(t("shipmentDetailsPage.noLabelAvailableToast"));
       }
     } catch (e) {
       toast.error(
-        e instanceof ApiClientError ? e.message : "تعذّر جلب بطاقة الشحن"
+        e instanceof ApiClientError ? e.message : t("shipmentDetailsPage.fetchLabelFailedToast")
       );
     } finally {
       setPrinting(false);
@@ -148,8 +149,10 @@ export function ShipmentDetailsPage() {
       <BackButton onClick={() => navigate("shipments")} />
 
       <PageHeader
-        title={`شحنة ${item.trackingNumber ?? item.id.slice(0, 8).toUpperCase()}`}
-        description="تفاصيل الشحنة الكاملة مع سجل الحالة."
+        title={t("shipmentDetailsPage.titlePrefix", {
+          number: item.trackingNumber ?? item.id.slice(0, 8).toUpperCase(),
+        })}
+        description={t("shipmentDetailsPage.description")}
         action={
           <div className="flex flex-wrap gap-2">
             <Button
@@ -164,7 +167,7 @@ export function ShipmentDetailsPage() {
               ) : (
                 <Printer className="h-4 w-4" />
               )}
-              بطاقة الشحن
+              {t("shipmentDetailsPage.shippingLabelBtn")}
             </Button>
             {/* NEW: AWB waybill preview modal button */}
             <Button
@@ -174,7 +177,7 @@ export function ShipmentDetailsPage() {
               onClick={() => setAwbOpen(true)}
             >
               <FileText className="h-4 w-4" />
-              معاينة البوليصة
+              {t("shipmentDetailsPage.previewWaybillBtn")}
             </Button>
             {canConfirm && (
               <Button
@@ -188,7 +191,7 @@ export function ShipmentDetailsPage() {
                 ) : (
                   <CheckCircle2 className="h-4 w-4" />
                 )}
-                تأكيد الشحنة
+                {t("shipmentDetailsPage.confirmShipmentBtn")}
               </Button>
             )}
             {canCancel && (
@@ -204,7 +207,7 @@ export function ShipmentDetailsPage() {
                 ) : (
                   <XCircle className="h-4 w-4" />
                 )}
-                إلغاء
+                {t("shipmentDetailsPage.cancelBtn")}
               </Button>
             )}
           </div>
@@ -221,16 +224,16 @@ export function ShipmentDetailsPage() {
               <meta.icon className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">الحالة الحالية</p>
+              <p className="text-xs text-muted-foreground">{t("shipmentDetailsPage.currentStatus")}</p>
               <p className="text-lg font-bold text-foreground">{meta.label}</p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <StatusBadge status={item.status} />
-            {item.carrierNameAr && (
+            {(item.carrierNameAr ?? item.carrierName) && (
               <Badge variant="outline" className="gap-1.5">
                 <Truck className="h-3 w-3" />
-                {item.carrierNameAr}
+                {item.carrierNameAr ?? item.carrierName}
               </Badge>
             )}
           </div>
@@ -244,30 +247,30 @@ export function ShipmentDetailsPage() {
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <Send className="h-4 w-4 text-primary" />
-                بيانات المرسل
+                {t("shipmentDetailsPage.senderInfo")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <DetailRow
                 icon={<User className="h-4 w-4" />}
-                label="الاسم"
-                value={item.senderName ?? "—"}
+                label={t("shipmentDetailsPage.name")}
+                value={item.senderName ?? t("common.none")}
               />
               <DetailRow
                 icon={<Phone className="h-4 w-4" />}
-                label="الجوال"
-                value={item.senderPhone ?? "—"}
+                label={t("shipmentDetailsPage.phone")}
+                value={item.senderPhone ?? t("common.none")}
                 ltr
               />
               <DetailRow
                 icon={<MapPin className="h-4 w-4" />}
-                label="المدينة"
-                value={item.senderCity ?? "—"}
+                label={t("shipmentDetailsPage.city")}
+                value={item.senderCity ?? t("common.none")}
               />
               <DetailRow
                 icon={<MapPin className="h-4 w-4" />}
-                label="العنوان"
-                value={item.senderAddress ?? "—"}
+                label={t("shipmentDetailsPage.address")}
+                value={item.senderAddress ?? t("common.none")}
               />
             </CardContent>
           </Card>
@@ -277,30 +280,30 @@ export function ShipmentDetailsPage() {
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <User className="h-4 w-4 text-primary" />
-                بيانات المستلم
+                {t("shipmentDetailsPage.receiverInfo")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <DetailRow
                 icon={<User className="h-4 w-4" />}
-                label="الاسم"
-                value={item.receiverName ?? "—"}
+                label={t("shipmentDetailsPage.name")}
+                value={item.receiverName ?? t("common.none")}
               />
               <DetailRow
                 icon={<Phone className="h-4 w-4" />}
-                label="الجوال"
-                value={item.receiverPhone ?? "—"}
+                label={t("shipmentDetailsPage.phone")}
+                value={item.receiverPhone ?? t("common.none")}
                 ltr
               />
               <DetailRow
                 icon={<MapPin className="h-4 w-4" />}
-                label="المدينة"
-                value={item.receiverCity ?? "—"}
+                label={t("shipmentDetailsPage.city")}
+                value={item.receiverCity ?? t("common.none")}
               />
               <DetailRow
                 icon={<MapPin className="h-4 w-4" />}
-                label="العنوان"
-                value={item.receiverAddress ?? "—"}
+                label={t("shipmentDetailsPage.address")}
+                value={item.receiverAddress ?? t("common.none")}
               />
             </CardContent>
           </Card>
@@ -310,75 +313,75 @@ export function ShipmentDetailsPage() {
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <Package className="h-4 w-4 text-primary" />
-                بيانات الشحنة
+                {t("shipmentDetailsPage.shipmentInfo")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <DetailRow
                 icon={<MapPin className="h-4 w-4" />}
-                label="من مدينة"
-                value={item.senderCity ?? "—"}
+                label={t("shipmentDetailsPage.fromCity")}
+                value={item.senderCity ?? t("common.none")}
               />
               <DetailRow
                 icon={<MapPin className="h-4 w-4" />}
-                label="إلى مدينة"
-                value={item.receiverCity ?? "—"}
+                label={t("shipmentDetailsPage.toCity")}
+                value={item.receiverCity ?? t("common.none")}
               />
               <DetailRow
                 icon={<Building2 className="h-4 w-4" />}
-                label="الناقل"
-                value={item.carrierNameAr ?? item.carrierName ?? "—"}
+                label={t("shipmentDetailsPage.carrier")}
+                value={item.carrierNameAr ?? item.carrierName ?? t("common.none")}
               />
               {item.serviceType && (
                 <DetailRow
                   icon={<Truck className="h-4 w-4" />}
-                  label="نوع الخدمة"
+                  label={t("shipmentDetailsPage.serviceType")}
                   value={item.serviceType}
                 />
               )}
               <DetailRow
                 icon={<Package className="h-4 w-4" />}
-                label="عدد القطع"
+                label={t("shipmentDetailsPage.piecesCount")}
                 value={String(item.pieces ?? item.packages?.length ?? 1)}
               />
               <DetailRow
                 icon={<Hash className="h-4 w-4" />}
-                label="الوزن (غرام)"
+                label={t("shipmentDetailsPage.weightGrams")}
                 value={
                   item.weightGrams
                     ? String(item.weightGrams)
                     : item.weight
                     ? String(item.weight * 1000)
-                    : "—"
+                    : t("common.none")
                 }
                 ltr
               />
               <DetailRow
                 icon={<Banknote className="h-4 w-4" />}
-                label="طريقة الدفع"
+                label={t("shipmentDetailsPage.paymentMethod")}
                 value={
                   item.paymentMode === "COD" || item.paymentMethod === "COD"
-                    ? "الدفع عند الاستلام"
-                    : "مدفوع مسبقاً"
+                    ? t("shipmentDetailsPage.cod")
+                    : t("shipmentDetailsPage.prepaid")
                 }
               />
               {codAmount ? (
                 <DetailRow
                   icon={<Banknote className="h-4 w-4" />}
-                  label="مبلغ COD"
+                  label={t("shipmentDetailsPage.codAmount")}
                   value={formatSAR(codAmount)}
                   ltr
                 />
               ) : null}
               <DetailRow
                 icon={<Calendar className="h-4 w-4" />}
-                label="تاريخ الإنشاء"
+                label={t("shipmentDetailsPage.createdAt")}
                 value={formatDateTime(item.createdAt)}
               />
               <DetailRow
                 icon={<Banknote className="h-4 w-4" />}
-                label="التكلفة"
-                value={price ? formatSAR(price) : "—"}
+                label={t("shipmentDetailsPage.cost")}
+                value={price ? formatSAR(price) : t("common.none")}
                 ltr
               />
             </CardContent>
@@ -390,7 +393,7 @@ export function ShipmentDetailsPage() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Package className="h-4 w-4 text-primary" />
-                  القطع ({item.packages.length})
+                  {t("shipmentDetailsPage.packagesTitle", { count: item.packages.length })}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -402,19 +405,19 @@ export function ShipmentDetailsPage() {
                     >
                       <div className="flex items-center justify-between mb-1">
                         <span className="font-semibold text-foreground">
-                          قطعة #{i + 1}
+                          {t("shipmentDetailsPage.pieceNumber", { index: i + 1 })}
                         </span>
                         {p.weightGrams && (
                           <span
                             className="text-xs text-muted-foreground"
                             dir="ltr"
                           >
-                            {p.weightGrams} غرام
+                            {t("shipmentDetailsPage.gramsUnit", { weight: p.weightGrams })}
                           </span>
                         )}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {p.description ?? "بدون وصف"}
+                        {p.description ?? t("shipmentDetailsPage.noDescription")}
                       </div>
                     </div>
                   ))}
@@ -428,24 +431,24 @@ export function ShipmentDetailsPage() {
         <div className="space-y-6">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">ملخص مالي</CardTitle>
+              <CardTitle className="text-base">{t("shipmentDetailsPage.financialSummary")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">سعر الشحن</span>
+                <span className="text-muted-foreground">{t("shipmentDetailsPage.shippingPrice")}</span>
                 <span className="font-medium" dir="ltr">
-                  {price ? formatSAR(price) : "—"}
+                  {price ? formatSAR(price) : t("common.none")}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">طريقة الدفع</span>
+                <span className="text-muted-foreground">{t("shipmentDetailsPage.paymentMethod")}</span>
                 <span className="font-medium">
-                  {item.paymentMode === "COD" ? "COD" : "مسبق"}
+                  {item.paymentMode === "COD" ? "COD" : t("shipmentDetailsPage.prepaidShort")}
                 </span>
               </div>
               {codAmount ? (
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">مبلغ COD</span>
+                  <span className="text-muted-foreground">{t("shipmentDetailsPage.codAmount")}</span>
                   <span className="font-medium" dir="ltr">
                     {formatSAR(codAmount)}
                   </span>
@@ -453,7 +456,7 @@ export function ShipmentDetailsPage() {
               ) : null}
               <Separator />
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">الحالة</span>
+                <span className="text-muted-foreground">{t("shipmentDetailsPage.statusLabel")}</span>
                 <StatusBadge status={item.status} size="sm" />
               </div>
             </CardContent>
@@ -462,17 +465,17 @@ export function ShipmentDetailsPage() {
           {history.length > 0 && (
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">سجل الحالة</CardTitle>
+                <CardTitle className="text-base">{t("shipmentDetailsPage.statusHistory")}</CardTitle>
               </CardHeader>
               <CardContent>
-                <ol className="relative space-y-4 pr-4 border-r-2 border-border">
+                <ol className="relative space-y-4 ps-4 border-s-2 border-border">
                   {history.map((h, i) => {
                     const hMeta = getStatusMeta(h.status ?? "");
                     const Icon = hMeta.icon;
                     return (
                       <li key={i} className="relative">
                         <span
-                          className={`absolute -right-[1.4rem] top-1.5 h-2.5 w-2.5 rounded-full ${hMeta.dot} ring-4 ring-primary/10`}
+                          className={`absolute -start-[1.4rem] top-1.5 h-2.5 w-2.5 rounded-full ${hMeta.dot} ring-4 ring-primary/10`}
                         />
                         <div className="space-y-0.5">
                           <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
@@ -481,7 +484,7 @@ export function ShipmentDetailsPage() {
                               h.message ??
                               h.messageAr ??
                               h.status ??
-                              "تحديث"}
+                              t("shipmentDetailsPage.updateFallback")}
                           </p>
                           {h.location && (
                             <p className="text-xs text-muted-foreground">

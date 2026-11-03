@@ -7,6 +7,7 @@ import { addressLookupApi } from "@/lib/api/services";
 import { ApiClientError } from "@/lib/api/client";
 import type { Customer } from "@/types/api";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/i18n";
 
 interface QuickCodeLookupProps {
   token: string | null;
@@ -33,16 +34,17 @@ export function QuickCodeLookup({
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [flash, setFlash] = useState(false);
+  const { t } = useTranslation();
 
   const handleLookup = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = code.trim().toUpperCase();
     if (!trimmed) {
-      toast.error("أدخل رمزاً للبحث");
+      toast.error(t("quickLookup.enterCodeError"));
       return;
     }
     if (!token) {
-      toast.error("الرجاء تسجيل الدخول أولاً");
+      toast.error(t("common.loginFirst"));
       return;
     }
     setBusy(true);
@@ -54,11 +56,14 @@ export function QuickCodeLookup({
       setFlash(true);
       setTimeout(() => setFlash(false), 1500);
       toast.success(
-        `تم جلب بيانات ${target === "sender" ? "المرسِل" : "المستلِم"} من ${result.source === "SPL" ? "العنوان الوطني" : "جهة الاتصال"}`
+        t("quickLookup.resolvedToast", {
+          target: target === "sender" ? t("quickLookup.sender") : t("quickLookup.receiver"),
+          source: result.source === "SPL" ? t("quickLookup.nationalAddress") : t("quickLookup.contactRecord"),
+        })
       );
     } catch (e) {
       const err = e as ApiClientError;
-      toast.error(err.message || "لم يتم العثور على سجل بهذا الرمز");
+      toast.error(err.message || t("quickLookup.notFoundError"));
     } finally {
       setBusy(false);
     }
@@ -79,7 +84,7 @@ export function QuickCodeLookup({
           type="text"
           value={code}
           onChange={(e) => setCode(e.target.value)}
-          placeholder="إدخال سريع: رمز SPL (RRMA2929) أو معرّف العميل (#MX-1024)"
+          placeholder={t("quickLookup.placeholder")}
           className="flex-1 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground/70"
           dir="ltr"
         />
@@ -93,7 +98,7 @@ export function QuickCodeLookup({
           ) : (
             <Zap className="h-3 w-3" />
           )}
-          جلب بالرمز
+          {t("quickLookup.fetchByCode")}
         </button>
       </div>
     </form>

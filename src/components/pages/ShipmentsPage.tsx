@@ -33,22 +33,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatDate, formatSAR, halToSar } from "@/lib/format";
+import { useTranslation } from "@/i18n";
 import type { ShipmentStatus } from "@/types/api";
-
-const STATUS_FILTERS: { value: string; label: string }[] = [
-  { value: "all", label: "كل الحالات" },
-  { value: "DRAFT", label: "مسودة" },
-  { value: "PENDING", label: "قيد الانتظار" },
-  { value: "PROCESSING", label: "قيد المعالجة" },
-  { value: "IN_TRANSIT", label: "قيد التوصيل" },
-  { value: "DELIVERED", label: "تم التسليم" },
-  { value: "CANCELLED", label: "ملغاة" },
-];
 
 export function ShipmentsPage() {
   const navigate = useRouterStore((s) => s.navigate);
   const { token } = useAuth();
   const { list, loading, error, reload } = useShipments(token);
+  const { t, locale } = useTranslation();
 
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<string>("all");
@@ -56,13 +48,23 @@ export function ShipmentsPage() {
 
   const debouncedQ = useDebouncedValue(q, 250);
 
+  const statusFilters: { value: string; label: string }[] = [
+    { value: "all", label: t("shipmentsPage.allStatuses") },
+    { value: "DRAFT", label: t("status.DRAFT.label") },
+    { value: "PENDING", label: t("status.PENDING.label") },
+    { value: "PROCESSING", label: t("status.PROCESSING.label") },
+    { value: "IN_TRANSIT", label: t("status.IN_TRANSIT.label") },
+    { value: "DELIVERED", label: t("status.DELIVERED.label") },
+    { value: "CANCELLED", label: t("status.CANCELLED.label") },
+  ];
+
   const carrierOptions = useMemo(() => {
     const values = list
       .map((s) => s.carrierNameAr ?? s.carrierName ?? s.carrier ?? s.carrierCode ?? "")
       .map((value) => value.trim())
       .filter(Boolean);
-    return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b, "ar"));
-  }, [list]);
+    return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b, locale));
+  }, [list, locale]);
 
   const filtered = useMemo(() => {
     return list.filter((s) => {
@@ -82,17 +84,27 @@ export function ShipmentsPage() {
     });
   }, [list, debouncedQ, status, carrier]);
 
-  const { paginated, page, totalPages, hasNext, hasPrev, nextPage, prevPage, setPage } = usePagination(filtered, 20);
+  const { paginated, page, totalPages, hasNext, hasPrev, nextPage, prevPage } = usePagination(filtered, 20);
 
   const handleExport = () => {
     if (filtered.length === 0) {
-      toast.info("لا توجد شحنات مطابقة للتصدير");
+      toast.info(t("shipmentsPage.noShipmentsToExport"));
       return;
     }
     const csvCell = (value: unknown) =>
       `"${String(value ?? "").replace(/"/g, '""')}"`;
     const rows = [
-      ["رقم التتبع", "شركة الشحن", "اسم المستلم", "جوال المستلم", "مدينة الإرسال", "مدينة الاستلام", "الحالة", "المبلغ (ر.س)", "تاريخ الإنشاء"],
+      [
+        t("shipmentsPage.csvHeaders.trackingNumber"),
+        t("shipmentsPage.csvHeaders.carrier"),
+        t("shipmentsPage.csvHeaders.receiverName"),
+        t("shipmentsPage.csvHeaders.receiverPhone"),
+        t("shipmentsPage.csvHeaders.senderCity"),
+        t("shipmentsPage.csvHeaders.receiverCity"),
+        t("shipmentsPage.csvHeaders.status"),
+        t("shipmentsPage.csvHeaders.amountSar"),
+        t("shipmentsPage.csvHeaders.createdAt"),
+      ],
       ...filtered.map((s) => [
         s.trackingNumber ?? s.id,
         s.carrierNameAr ?? s.carrierName ?? s.carrier ?? s.carrierCode ?? "",
@@ -115,19 +127,21 @@ export function ShipmentsPage() {
     anchor.click();
     anchor.remove();
     URL.revokeObjectURL(url);
-    toast.success(`تم تصدير ${filtered.length} شحنة`);
+    toast.success(t("shipmentsPage.exportedCountToast", { count: filtered.length }));
   };
+
+  const arrowChar = locale === "en" ? "→" : "←";
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="الشحنات"
-        description="إدارة وتتبّع جميع شحناتك في مكان واحد."
+        title={t("shipmentsPage.title")}
+        description={t("shipmentsPage.description")}
         action={
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" className="gap-1.5" onClick={handleExport}>
               <Download className="h-4 w-4" />
-              تصدير
+              {t("common.export")}
             </Button>
             <Button
               size="sm"
@@ -135,7 +149,7 @@ export function ShipmentsPage() {
               onClick={() => navigate("create-shipment")}
             >
               <Plus className="h-4 w-4" />
-              شحنة جديدة
+              {t("nav.newShipment")}
             </Button>
           </div>
         }
@@ -144,10 +158,10 @@ export function ShipmentsPage() {
       <Card>
         <CardContent className="p-4 flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="بحث برقم التتبع، المدينة، المستلم…"
-              className="pr-9"
+              placeholder={t("shipmentsPage.searchPlaceholder")}
+              className="ps-9"
               value={q}
               onChange={(e) => setQ(e.target.value)}
             />
@@ -158,7 +172,7 @@ export function ShipmentsPage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {STATUS_FILTERS.map((f) => (
+              {statusFilters.map((f) => (
                 <SelectItem key={f.value} value={f.value}>
                   {f.label}
                 </SelectItem>
@@ -167,10 +181,10 @@ export function ShipmentsPage() {
           </Select>
           <Select value={carrier} onValueChange={setCarrier}>
             <SelectTrigger className="sm:w-48">
-              <SelectValue placeholder="كل شركات الشحن" />
+              <SelectValue placeholder={t("shipmentsPage.allCarriers")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">كل شركات الشحن</SelectItem>
+              <SelectItem value="all">{t("shipmentsPage.allCarriers")}</SelectItem>
               {carrierOptions.map((name) => (
                 <SelectItem key={name} value={name}>
                   {name}
@@ -184,18 +198,20 @@ export function ShipmentsPage() {
       <Card className="overflow-hidden">
         <CardContent className="p-0">
           {loading ? (
-            <LoadingState message="جارٍ تحميل الشحنات…" className="py-16" />
+            <LoadingState message={t("shipmentsPage.loading")} className="py-16" />
           ) : error ? (
             <ErrorState message={error} onRetry={reload} className="py-16" />
           ) : filtered.length === 0 ? (
             <EmptyState
               title={
-              q || status !== "all" || carrier !== "all" ? "لا توجد نتائج مطابقة" : "لا توجد شحنات بعد"
+                q || status !== "all" || carrier !== "all"
+                  ? t("common.noMatchingResults")
+                  : t("shipmentsPage.emptyTitle")
               }
               description={
                 q || status !== "all" || carrier !== "all"
-                  ? "جرّب تعديل البحث أو الفلتر."
-                  : "ابدأ بإنشاء شحنتك الأولى."
+                  ? t("common.tryAdjustingSearch")
+                  : t("shipmentsPage.emptyDesc")
               }
               icon={Plus}
               action={
@@ -204,7 +220,7 @@ export function ShipmentsPage() {
                     size="sm"
                     onClick={() => navigate("create-shipment")}
                   >
-                    إنشاء شحنة
+                    {t("shipmentsPage.createShipment")}
                   </Button>
                 ) : undefined
               }
@@ -216,13 +232,13 @@ export function ShipmentsPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/40 hover:bg-muted/40">
-                      <TableHead className="text-right">رقم التتبع</TableHead>
-                      <TableHead className="text-right">المسار</TableHead>
-                      <TableHead className="text-right">المستلم</TableHead>
-                      <TableHead className="text-right">الناقل</TableHead>
-                      <TableHead className="text-right">الحالة</TableHead>
-                      <TableHead className="text-right">القيمة</TableHead>
-                      <TableHead className="text-right">التاريخ</TableHead>
+                      <TableHead className="text-start">{t("shipmentsPage.table.trackingNumber")}</TableHead>
+                      <TableHead className="text-start">{t("shipmentsPage.table.route")}</TableHead>
+                      <TableHead className="text-start">{t("shipmentsPage.table.receiver")}</TableHead>
+                      <TableHead className="text-start">{t("shipmentsPage.table.carrier")}</TableHead>
+                      <TableHead className="text-start">{t("shipmentsPage.table.status")}</TableHead>
+                      <TableHead className="text-start">{t("shipmentsPage.table.amount")}</TableHead>
+                      <TableHead className="text-start">{t("shipmentsPage.table.date")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -245,19 +261,19 @@ export function ShipmentsPage() {
                           <TableCell className="text-sm">
                             <div className="flex items-center gap-1.5">
                               <span className="font-medium text-foreground">
-                                {s.senderCity ?? "—"}
+                                {s.senderCity ?? t("common.none")}
                               </span>
-                              <span className="text-muted-foreground">←</span>
+                              <span className="text-muted-foreground">{arrowChar}</span>
                               <span className="font-medium text-foreground">
-                                {s.receiverCity ?? "—"}
+                                {s.receiverCity ?? t("common.none")}
                               </span>
                             </div>
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
-                            {s.receiverName ?? "—"}
+                            {s.receiverName ?? t("common.none")}
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
-                            {s.carrierNameAr ?? s.carrierName ?? "—"}
+                            {s.carrierNameAr ?? s.carrierName ?? t("common.none")}
                           </TableCell>
                           <TableCell>
                             <StatusBadge
@@ -269,7 +285,7 @@ export function ShipmentsPage() {
                             className="text-sm font-semibold"
                             dir="ltr"
                           >
-                            {price ? formatSAR(price) : "—"}
+                            {price ? formatSAR(price) : t("common.none")}
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground">
                             {formatDate(s.createdAt)}
@@ -283,9 +299,6 @@ export function ShipmentsPage() {
 
               <div className="md:hidden divide-y divide-border">
                 {paginated.map((s) => {
-                  const price = s.totalHal
-                    ? halToSar(s.totalHal)
-                    : s.price ?? 0;
                   return (
                     <button
                       key={s.id}
@@ -293,7 +306,7 @@ export function ShipmentsPage() {
                       onClick={() =>
                         navigate("shipment-details", { id: s.id })
                       }
-                      className="w-full flex flex-col gap-2 p-4 text-right hover:bg-muted/30"
+                      className="w-full flex flex-col gap-2 p-4 text-start hover:bg-muted/30"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-mono text-xs font-semibold text-primary">
@@ -307,16 +320,16 @@ export function ShipmentsPage() {
                       </div>
                       <div className="flex items-center gap-1.5 text-sm">
                         <span className="font-medium">
-                          {s.senderCity ?? "—"}
+                          {s.senderCity ?? t("common.none")}
                         </span>
-                        <span className="text-muted-foreground">←</span>
+                        <span className="text-muted-foreground">{arrowChar}</span>
                         <span className="font-medium">
-                          {s.receiverCity ?? "—"}
+                          {s.receiverCity ?? t("common.none")}
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-[11px] text-muted-foreground">
                         <span>
-                          {s.carrierNameAr ?? s.carrier ?? "—"}
+                          {s.carrierNameAr ?? s.carrier ?? t("common.none")}
                         </span>
                         <span>{formatDate(s.createdAt)}</span>
                       </div>
@@ -333,10 +346,10 @@ export function ShipmentsPage() {
                     onClick={prevPage}
                     disabled={!hasPrev}
                   >
-                    السابق
+                    {t("common.previous")}
                   </Button>
                   <span className="text-sm text-muted-foreground">
-                    صفحة {page} من {totalPages}
+                    {t("common.pageOf", { page, total: totalPages })}
                   </span>
                   <Button
                     variant="outline"
@@ -344,7 +357,7 @@ export function ShipmentsPage() {
                     onClick={nextPage}
                     disabled={!hasNext}
                   >
-                    التالي
+                    {t("common.next")}
                   </Button>
                 </div>
               )}
